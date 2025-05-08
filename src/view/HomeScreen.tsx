@@ -33,6 +33,29 @@ export default function HomeScreen() {
   const [cameraPermissionStatus, setCameraPermissionStatus] = useState<ImagePicker.PermissionStatus | null>(null);
   const [assetUriMap, setAssetUriMap] = useState<{ [internalUri: string]: string | undefined }>({});
 
+  const processImageWithOCR = async (imageUri: string) => {
+    setIsLoadingOcr(prev => ({ ...prev, [imageUri]: true }));
+    try {
+      const text = await ocrWithGoogleVision(imageUri);
+      console.log('OCR Result:', {
+        imageUri,
+        text
+      });
+
+      // OCR 결과 저장
+      if (text && text !== 'No text found in image.' && !text.includes('OCR failed')) {
+        setOcrResults(prevResults => ({ ...prevResults, [imageUri]: text }));
+      } else {
+        setOcrResults(prevResults => ({ ...prevResults, [imageUri]: null }));
+      }
+    } catch (error) {
+      console.error(`이미지 OCR 오류 (${imageUri}):`, error);
+      setOcrResults(prevResults => ({ ...prevResults, [imageUri]: null }));
+    } finally {
+      setIsLoadingOcr(prev => ({ ...prev, [imageUri]: false }));
+    }
+  };
+
   useEffect(() => {
     if (!OPENAI_API_KEY || !GOOGLE_CLOUD_VISION_API_KEY) {
       Alert.alert(
@@ -62,7 +85,7 @@ export default function HomeScreen() {
   const handleChooseImage = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: 'images',
         allowsMultipleSelection: true,
         quality: 1,
       });
@@ -75,19 +98,12 @@ export default function HomeScreen() {
         });
         setAssetUriMap(newAssetUriMap);
 
-        result.assets.forEach(async (asset) => {
+        // 각 이미지에 대해 OCR 처리
+        for (const asset of result.assets) {
           if (asset.uri) {
-            setIsLoadingOcr(prev => ({ ...prev, [asset.uri]: true }));
-            try {
-              const text = await ocrWithGoogleVision(asset.uri);
-              setOcrResults(prevResults => ({ ...prevResults, [asset.uri]: text }));
-            } catch (error) {
-              console.error(`이미지 OCR 오류 (${asset.uri}):`, error);
-              setOcrResults(prevResults => ({ ...prevResults, [asset.uri]: 'OCR 실패' }));
-            }
-            setIsLoadingOcr(prev => ({ ...prev, [asset.uri]: false }));
+            await processImageWithOCR(asset.uri);
           }
-        });
+        }
       }
     } catch (error) {
       console.error('이미지 선택 오류:', error);
@@ -101,6 +117,7 @@ export default function HomeScreen() {
 
     try {
       const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: 'images',
         allowsEditing: false,
         quality: 1,
       });
@@ -112,15 +129,9 @@ export default function HomeScreen() {
         newAssetUriMap[newImage.uri] = newImage.assetId ?? undefined;
         setAssetUriMap(newAssetUriMap);
 
-        setIsLoadingOcr(prev => ({ ...prev, [newImage.uri]: true }));
-        try {
-          const text = await ocrWithGoogleVision(newImage.uri);
-          setOcrResults(prevResults => ({ ...prevResults, [newImage.uri]: text }));
-        } catch (error) {
-          console.error(`사진 OCR 오류 (${newImage.uri}):`, error);
-          setOcrResults(prevResults => ({ ...prevResults, [newImage.uri]: 'OCR 실패' }));
+        if (newImage.uri) {
+          await processImageWithOCR(newImage.uri);
         }
-        setIsLoadingOcr(prev => ({ ...prev, [newImage.uri]: false }));
       }
     } catch (error) {
       console.error('사진 촬영 오류:', error);
@@ -130,7 +141,7 @@ export default function HomeScreen() {
 
   const handleGetInfo = async () => {
     if (selectedImages.length === 0) {
-      setInfoResult('정보를 추출하려면 먼저 이미지를 선택하거나 촬영하고 OCR을 실행해주세요.');
+      setInfoResult('정보를 추출하려면 먼저 이미지를 선택하거나 촬영해주세요.');
       return;
     }
     const lastImage = selectedImages[selectedImages.length - 1];
@@ -138,22 +149,29 @@ export default function HomeScreen() {
       setInfoResult('선택된 이미지가 유효하지 않습니다.');
       return;
     }
-    const activeOcrText = ocrResults[lastImage.uri];
-    if (!activeOcrText || !activeOcrText.trim()) {
-      setInfoResult('선택된 이미지의 OCR 텍스트가 없거나 비어있습니다. OCR이 완료되었는지 확인해주세요.');
+
+    const ocrText = ocrResults[lastImage.uri];
+    if (!ocrText) {
+      setInfoResult('선택된 이미지의 텍스트를 인식하지 못했습니다. 다른 이미지를 시도해주세요.');
       return;
     }
+
+    const question = questionText.trim();
+    if (!question) {
+      setInfoResult('질문을 입력해주세요.');
+      return;
+    }
+
     setIsFetchingInfo(true);
     try {
-      let textForOpenAI = activeOcrText;
-      if (questionText.trim()) {
-        textForOpenAI = `${activeOcrText}\n\n질문: ${questionText.trim()}`;
-      }
+      const textForOpenAI = `${ocrText}\n\n질문: ${question}`;
+      console.log('Sending to OpenAI:', textForOpenAI);
       const result = await getInfoFromTextWithOpenAI(textForOpenAI);
+      console.log('OpenAI Result:', result);
       setInfoResult(result);
     } catch (error) {
-      console.error('OpenAI 정보 추출 오류:', error);
-      setInfoResult('정보를 추출하는 중 오류가 발생했습니다.');
+      console.error('OpenAI 처리 오류:', error);
+      setInfoResult('질문 처리 중 오류가 발생했습니다.');
     } finally {
       setIsFetchingInfo(false);
     }
