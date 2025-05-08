@@ -1,7 +1,8 @@
 // /Users/kkm/Findit_RN/Findit/src/components/ImagePreview.tsx
 import React from 'react';
-import { View, Text, Image, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, Image, ScrollView, ActivityIndicator } from 'react-native';
 import { ImagePickerAsset } from 'expo-image-picker';
+import { imagePreviewStyles as styles } from '../styles/ImagePreview.styles';
 
 interface ImagePreviewProps {
   image: ImagePickerAsset;
@@ -25,36 +26,5 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrText, isLoadingOc
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  imageContainer: { // 이미지와 OCR 텍스트를 담는 컨테이너
-    alignItems: 'center',
-    marginHorizontal: 5, // 좌우 여백 추가
-    marginBottom: 20, // 이미지 아이템 간 간격
-    width: 150, // 각 이미지 컨테이너의 너비 고정 (필요에 따라 조정)
-  },
-  previewImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 5,
-    marginBottom: 5, // 이미지와 OCR 텍스트 간 간격
-  },
-  loadingIndicator: {
-    marginTop: 10,
-  },
-  ocrTextScrollView: {
-    maxHeight: 100, // OCR 텍스트 표시 영역의 최대 높이 제한
-    width: '100%', // 부모 컨테이너 너비에 맞춤
-    marginTop: 5,
-    padding: 5,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 3,
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  ocrText: {
-    fontSize: 12,
-  },
-});
 
 export default ImagePreview;
