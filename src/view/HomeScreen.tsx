@@ -145,21 +145,37 @@ export default function HomeScreen() {
       setInfoResult('정보를 추출하려면 먼저 이미지를 선택하거나 촬영해주세요.');
       return;
     }
-    const lastImage = selectedImages[selectedImages.length - 1];
-    if (!lastImage || !lastImage.uri) {
-      setInfoResult('선택된 이미지가 유효하지 않습니다.');
-      return;
-    }
 
-    const ocrText = ocrResults[lastImage.uri];
-    if (!ocrText) {
-      setInfoResult('선택된 이미지의 텍스트를 인식하지 못했습니다. 다른 이미지를 시도해주세요.');
-      return;
-    }
-
+    // 질문에서 특정 순서를 파악
     const question = questionText.trim();
     if (!question) {
       setInfoResult('질문을 입력해주세요.');
+      return;
+    }
+
+    let targetIndex = selectedImages.length - 1; // 기본적으로 마지막 사진
+    if (question.includes('첫 번째')) {
+      targetIndex = 0;
+    } else if (question.includes('두 번째')) {
+      targetIndex = 1;
+    } else if (question.includes('세 번째')) {
+      targetIndex = 2;
+    } else if (question.includes('네 번째')) {
+      targetIndex = 3;
+    } else if (question.includes('다섯 번째')) {
+      targetIndex = 4;
+    }
+
+    // 선택된 순서의 이미지 가져오기
+    const targetImage = selectedImages[targetIndex];
+    if (!targetImage || !targetImage.uri) {
+      setInfoResult('질문에 해당하는 이미지가 없습니다.');
+      return;
+    }
+
+    const ocrText = ocrResults[targetImage.uri];
+    if (!ocrText) {
+      setInfoResult('선택된 이미지의 텍스트를 인식하지 못했습니다. 다른 이미지를 시도해주세요.');
       return;
     }
 
