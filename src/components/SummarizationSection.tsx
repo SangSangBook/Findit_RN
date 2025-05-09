@@ -24,7 +24,7 @@ const SummarizationSection: React.FC<SummarizationSectionProps> = ({
       <Text style={styles.title}>OCR 결과에 대해 질문하기</Text>
       <TextInput
         style={styles.input}
-        placeholder="선택된 이미지의 OCR 결과에 대해 질문해보세요... (예: 대표자가 누구야?)"
+        placeholder="이미지에 대해 질문해보세요."
         multiline
         numberOfLines={3}
         onChangeText={setQuestionText}
