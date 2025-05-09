@@ -13,7 +13,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/logoWhite.png",
+        "foregroundImage": "./assets/images/logoBlue.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true
