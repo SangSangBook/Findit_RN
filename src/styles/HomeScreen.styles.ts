@@ -88,11 +88,36 @@ export const homeScreenStyles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 3,
+    position: 'relative',
   },
   summarySection: {
     flex: 1,
     paddingHorizontal: 20,
     marginTop: 20,
     marginBottom: 30,
+  },
+  imageTouchable: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewImage: {
+    width: '90%',
+    height: '70%',
+    borderRadius: 12,
+  },
+  deleteButton: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 12,
+    padding: 5,
+    zIndex: 10,
   },
 }); 

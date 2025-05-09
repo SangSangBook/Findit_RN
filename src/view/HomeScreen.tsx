@@ -1,14 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { getInfoFromTextWithOpenAI } from '../api/openaiApi'; 
-import { ocrWithGoogleVision } from '../api/googleVisionApi'; 
-import { ScrollView, View, Text, Platform, Alert, TouchableOpacity } from 'react-native'; 
-import * as ImagePicker from 'expo-image-picker';
-import Button from '../components/Button'; 
-import ImagePreview from '../components/ImagePreview'; 
-import SummarizationSection from '../components/SummarizationSection'; 
-import { OPENAI_API_KEY, GOOGLE_CLOUD_VISION_API_KEY } from '@env';
-import { BlurView } from 'expo-blur';
+import { GOOGLE_CLOUD_VISION_API_KEY, OPENAI_API_KEY } from '@env';
 import { MaterialIcons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
+import * as ImagePicker from 'expo-image-picker';
+import React, { useEffect, useRef, useState } from 'react';
+import { Alert, Animated, Image, Modal, ScrollView, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+import { ocrWithGoogleVision } from '../api/googleVisionApi';
+import { getInfoFromTextWithOpenAI } from '../api/openaiApi';
+import ImagePreview from '../components/ImagePreview';
+import SummarizationSection from '../components/SummarizationSection';
 import { homeScreenStyles as styles } from '../styles/HomeScreen.styles';
 
 interface SelectedImage {
@@ -32,6 +31,8 @@ export default function HomeScreen() {
   const [isFetchingInfo, setIsFetchingInfo] = useState<boolean>(false);
   const [cameraPermissionStatus, setCameraPermissionStatus] = useState<ImagePicker.PermissionStatus | null>(null);
   const [assetUriMap, setAssetUriMap] = useState<{ [internalUri: string]: string | undefined }>({});
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const processImageWithOCR = async (imageUri: string) => {
     setIsLoadingOcr(prev => ({ ...prev, [imageUri]: true }));
@@ -177,6 +178,32 @@ export default function HomeScreen() {
     }
   };
 
+  const openPreview = (uri: string) => {
+    setPreviewImage(uri);
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const closePreview = () => {
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => setPreviewImage(null));
+  };
+
+  const removeImage = (uri: string) => {
+    setSelectedImages(prevImages => prevImages.filter(image => image.uri !== uri));
+    setOcrResults(prevResults => {
+      const updatedResults = { ...prevResults };
+      delete updatedResults[uri];
+      return updatedResults;
+    });
+  };
+
   return (
     <ScrollView
       style={styles.container}
@@ -216,16 +243,51 @@ export default function HomeScreen() {
           >
             {selectedImages.map((image) => (
               <View key={image.uri} style={styles.imageWrapper}>
-                <ImagePreview
-                  image={image}
-                  ocrText={ocrResults[image.uri]}
-                  isLoadingOcr={isLoadingOcr[image.uri] || false}
-                />
+                <TouchableOpacity
+                  onPress={() => openPreview(image.uri)}
+                  style={styles.imageTouchable}
+                >
+                  <ImagePreview
+                    image={image}
+                    ocrText={ocrResults[image.uri]}
+                    isLoadingOcr={isLoadingOcr[image.uri] || false}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.deleteButton}
+                  onPress={() => removeImage(image.uri)}
+                >
+                  <MaterialIcons name="close" size={20} color="#fff" />
+                </TouchableOpacity>
               </View>
             ))}
           </ScrollView>
         </View>
       )}
+
+      <Modal
+        visible={!!previewImage}
+        transparent={true}
+        animationType="none"
+        onRequestClose={closePreview}
+      >
+        <TouchableWithoutFeedback onPress={closePreview}>
+          <Animated.View
+            style={[
+              styles.modalOverlay,
+              { opacity: fadeAnim },
+            ]}
+          >
+            {previewImage && (
+              <Image
+                source={{ uri: previewImage }}
+                style={styles.previewImage}
+                resizeMode="contain"
+              />
+            )}
+          </Animated.View>
+        </TouchableWithoutFeedback>
+      </Modal>
 
       <View style={styles.summarySection}>
         <SummarizationSection
