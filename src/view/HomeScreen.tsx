@@ -2,8 +2,8 @@ import { GOOGLE_CLOUD_VISION_API_KEY, OPENAI_API_KEY } from '@env';
 import { MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import * as ImagePicker from 'expo-image-picker';
-import { useEffect, useState } from 'react';
-import { Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Alert, Animated, Image, Modal, ScrollView, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import { ocrWithGoogleVision } from '../api/googleVisionApi';
 import { getInfoFromTextWithOpenAI } from '../api/openaiApi';
 import { extractTextFromVideo } from '../api/videoOcrApi';
@@ -178,8 +178,8 @@ export default function HomeScreen() {
       return;
     }
 
-    const ocrText = ocrResults[lastMedia.uri];
-    if (!ocrText) {
+    const lastMediaOcrText = ocrResults[lastMedia.uri];
+    if (!lastMediaOcrText) {
       setInfoResult('선택된 미디어의 텍스트를 인식하지 못했습니다. 다른 미디어를 시도해주세요.');
       return;
     }
