@@ -39,18 +39,26 @@ export const ocrWithGoogleVision = async (imageUri: string): Promise<string | nu
     };
 
     // 3. API 요청을 보냅니다.
-    const response = await fetch(
-      `https://vision.googleapis.com/v1/images:annotate?key=${GOOGLE_CLOUD_VISION_API_KEY}`,
-      {
-        method: 'POST',
-        body: JSON.stringify(requestBody),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    const apiUrl = `https://vision.googleapis.com/v1/images:annotate?key=${GOOGLE_CLOUD_VISION_API_KEY}`;
+    console.log('Sending request to:', apiUrl); // 디버깅을 위한 로그
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      body: JSON.stringify(requestBody),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Google Cloud Vision API Error:', errorData);
+      return `Vision API Error: ${errorData.error?.message || 'Unknown error'}`;
+    }
 
     const data = await response.json();
+    console.log('API Response:', data); // 디버깅을 위한 로그
 
     // 4. 응답을 처리합니다.
     if (data.responses && data.responses.length > 0) {
