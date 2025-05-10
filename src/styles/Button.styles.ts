@@ -5,7 +5,7 @@ export const buttonStyles = StyleSheet.create({
     backgroundColor: '#007AFF',
     paddingVertical: 15,
     paddingHorizontal: 30,
-    borderRadius: 10,
+    borderRadius: 12,
     marginBottom: 20,
     minWidth: 200,
     alignItems: 'center',

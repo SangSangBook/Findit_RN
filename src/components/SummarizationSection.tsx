@@ -21,7 +21,7 @@ const SummarizationSection: React.FC<SummarizationSectionProps> = ({
 }) => {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>OCR 결과에 대해 질문하기</Text>
+      <Text style={styles.title}>질문</Text>
       <TextInput
         style={styles.input}
         placeholder="이미지에 대해 질문해보세요."
@@ -30,13 +30,12 @@ const SummarizationSection: React.FC<SummarizationSectionProps> = ({
         onChangeText={setQuestionText}
         value={questionText}
         scrollEnabled={true}
-        textAlignVertical="top" // textAlignVertical은 Tailwind CSS로 직접 제어하기 어려우므로 prop으로 유지
+        textAlignVertical="top"
       />
       <Button
         title={isFetchingInfo ? "정보 가져오는 중..." : "정보 가져오기"}
         onPress={handleGetInfo}
         isLoading={isFetchingInfo}
-        // Tailwind CSS 클래스를 Button 컴포넌트 내부에서 관리한다고 가정
       />
       {infoResult && (
         <ScrollView style={styles.resultContainer}>

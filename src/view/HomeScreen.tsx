@@ -227,8 +227,11 @@ export default function HomeScreen() {
       keyboardShouldPersistTaps="handled"
     >
       <BlurView intensity={20} style={styles.header}>
-        <Text style={styles.title}>Findit</Text>
-        <Text style={styles.subtitle}>이미지에서 정보를 찾아보세요</Text>
+        <Image style={styles.logo} source={require('../../assets/images/logoBlue.png')} />
+        <View style={styles.headerTextContainer}>
+          <Text style={styles.title}>찾기</Text>
+          <Text style={styles.subtitle}>이미지에서 정보를 찾아보세요</Text>
+        </View>
       </BlurView>
 
       <View style={styles.buttonContainer}>

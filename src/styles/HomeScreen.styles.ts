@@ -1,4 +1,4 @@
-import { StyleSheet, Platform } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 
 export const homeScreenStyles = StyleSheet.create({
   container: {
@@ -9,23 +9,34 @@ export const homeScreenStyles = StyleSheet.create({
     flexGrow: 1,
   },
   header: {
+    flexDirection: 'row', // 가로 정렬
+    alignItems: 'center', // 세로 중앙 정렬
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
     paddingBottom: 20,
-    alignItems: 'center',
+    paddingHorizontal: 20, // 좌우 여백 추가
     backgroundColor: 'rgba(255, 255, 255, 0.8)',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0, 0, 0, 0.1)',
   },
+  logo: {
+    width: 40, // 로고 크기 조정
+    height: 40,
+    marginRight: 10, // 텍스트와 간격 추가
+  },
+  headerTextContainer: {
+    flex: 1, // 텍스트가 남은 공간을 차지하도록 설정
+  },
   title: {
-    fontSize: 42,
+    fontFamily: 'GmarketSansBold', // 폰트 변경
+    fontSize: 24, // 제목 크기 조정
     fontWeight: 'bold',
     color: '#2d3748',
-    marginBottom: 8,
+    marginBottom: 5, // 제목과 부제목 간격 조정
   },
   subtitle: {
-    fontSize: 16,
+    fontFamily: 'GmarketSansLight', // 폰트 변경
+    fontSize: 14, // 부제목 크기 조정
     color: '#718096',
-    marginBottom: 8,
   },
   buttonContainer: {
     flexDirection: 'row',
@@ -58,6 +69,7 @@ export const homeScreenStyles = StyleSheet.create({
     backgroundColor: '#48bb78',
   },
   buttonText: {
+    fontFamily: 'GmarketSansMedium',
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
@@ -68,6 +80,7 @@ export const homeScreenStyles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   sectionTitle: {
+    fontFamily: 'GmarketSansBold',
     fontSize: 20,
     fontWeight: '600',
     color: '#2d3748',
@@ -120,4 +133,4 @@ export const homeScreenStyles = StyleSheet.create({
     padding: 5,
     zIndex: 10,
   },
-}); 
+});
