@@ -2,10 +2,11 @@ import { GOOGLE_CLOUD_VISION_API_KEY, OPENAI_API_KEY } from '@env';
 import { MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import * as ImagePicker from 'expo-image-picker';
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, Animated, Image, Modal, ScrollView, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import { ocrWithGoogleVision } from '../api/googleVisionApi';
 import { getInfoFromTextWithOpenAI } from '../api/openaiApi';
+import { extractTextFromVideo } from '../api/videoOcrApi';
 import ImagePreview from '../components/ImagePreview';
 import SummarizationSection from '../components/SummarizationSection';
 import { homeScreenStyles as styles } from '../styles/HomeScreen.styles';
@@ -43,7 +44,6 @@ export default function HomeScreen() {
         text
       });
 
-      // OCR 결과 저장
       if (text && text !== 'No text found in image.' && !text.includes('OCR failed')) {
         setOcrResults(prevResults => ({ ...prevResults, [imageUri]: text }));
       } else {
@@ -54,6 +54,29 @@ export default function HomeScreen() {
       setOcrResults(prevResults => ({ ...prevResults, [imageUri]: null }));
     } finally {
       setIsLoadingOcr(prev => ({ ...prev, [imageUri]: false }));
+    }
+  };
+
+  const processVideoWithOCR = async (videoUri: string) => {
+    setIsLoadingOcr(prev => ({ ...prev, [videoUri]: true }));
+    try {
+      const results = await extractTextFromVideo(videoUri, 1); // 1초당 1프레임
+      console.log('Video OCR Results:', results);
+
+      if (results.length > 0) {
+        // 모든 프레임의 텍스트를 하나로 합침
+        const combinedText = results
+          .map(result => `[${result.time/1000}초] ${result.text}`)
+          .join('\n\n');
+        setOcrResults(prevResults => ({ ...prevResults, [videoUri]: combinedText }));
+      } else {
+        setOcrResults(prevResults => ({ ...prevResults, [videoUri]: null }));
+      }
+    } catch (error) {
+      console.error(`비디오 OCR 오류 (${videoUri}):`, error);
+      setOcrResults(prevResults => ({ ...prevResults, [videoUri]: null }));
+    } finally {
+      setIsLoadingOcr(prev => ({ ...prev, [videoUri]: false }));
     }
   };
 
@@ -83,10 +106,10 @@ export default function HomeScreen() {
     return true; 
   };
 
-  const handleChooseImage = async () => {
+  const handleChooseMedia = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: 'images',
+        mediaTypes: ImagePicker.MediaTypeOptions.All,
         allowsMultipleSelection: true,
         quality: 1,
       });
@@ -99,16 +122,20 @@ export default function HomeScreen() {
         });
         setAssetUriMap(newAssetUriMap);
 
-        // 각 이미지에 대해 OCR 처리
+        // 각 미디어에 대해 OCR 처리
         for (const asset of result.assets) {
           if (asset.uri) {
-            await processImageWithOCR(asset.uri);
+            if (asset.type === 'video') {
+              await processVideoWithOCR(asset.uri);
+            } else {
+              await processImageWithOCR(asset.uri);
+            }
           }
         }
       }
     } catch (error) {
-      console.error('이미지 선택 오류:', error);
-      Alert.alert('오류', '이미지를 선택하는 중 오류가 발생했습니다.');
+      console.error('미디어 선택 오류:', error);
+      Alert.alert('오류', '미디어를 선택하는 중 오류가 발생했습니다.');
     }
   };
 
@@ -118,7 +145,7 @@ export default function HomeScreen() {
 
     try {
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: 'images',
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: false,
         quality: 1,
       });
@@ -142,7 +169,18 @@ export default function HomeScreen() {
 
   const handleGetInfo = async () => {
     if (selectedImages.length === 0) {
-      setInfoResult('정보를 추출하려면 먼저 이미지를 선택하거나 촬영해주세요.');
+      setInfoResult('정보를 추출하려면 먼저 이미지나 비디오를 선택하거나 촬영해주세요.');
+      return;
+    }
+    const lastMedia = selectedImages[selectedImages.length - 1];
+    if (!lastMedia || !lastMedia.uri) {
+      setInfoResult('선택된 미디어가 유효하지 않습니다.');
+      return;
+    }
+
+    const lastMediaOcrText = ocrResults[lastMedia.uri];
+    if (!lastMediaOcrText) {
+      setInfoResult('선택된 미디어의 텍스트를 인식하지 못했습니다. 다른 미디어를 시도해주세요.');
       return;
     }
 
@@ -230,17 +268,17 @@ export default function HomeScreen() {
         <Image style={styles.logo} source={require('../../assets/images/logoBlue.png')} />
         <View style={styles.headerTextContainer}>
           <Text style={styles.title}>찾기</Text>
-          <Text style={styles.subtitle}>이미지에서 정보를 찾아보세요</Text>
+          <Text style={styles.subtitle}>미디어에서 정보를 찾아보세요</Text>
         </View>
       </BlurView>
 
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={[styles.actionButton, styles.uploadButton]}
-          onPress={handleChooseImage}
+          onPress={handleChooseMedia}
         >
           <MaterialIcons name="photo-library" size={24} color="#fff" />
-          <Text style={styles.buttonText}>사진 업로드</Text>
+          <Text style={styles.buttonText}>미디어 업로드</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -254,27 +292,27 @@ export default function HomeScreen() {
 
       {selectedImages.length > 0 && (
         <View style={styles.imagesSection}>
-          <Text style={styles.sectionTitle}>선택된 이미지</Text>
+          <Text style={styles.sectionTitle}>선택된 미디어</Text>
           <ScrollView 
             horizontal 
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.imagesScrollContainer}
           >
-            {selectedImages.map((image) => (
-              <View key={image.uri} style={styles.imageWrapper}>
+            {selectedImages.map((media) => (
+              <View key={media.uri} style={styles.imageWrapper}>
                 <TouchableOpacity
-                  onPress={() => openPreview(image.uri)}
+                  onPress={() => openPreview(media.uri)}
                   style={styles.imageTouchable}
                 >
                   <ImagePreview
-                    image={image}
-                    ocrText={ocrResults[image.uri]}
-                    isLoadingOcr={isLoadingOcr[image.uri] || false}
+                    image={media}
+                    ocrText={ocrResults[media.uri]}
+                    isLoadingOcr={isLoadingOcr[media.uri] || false}
                   />
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.deleteButton}
-                  onPress={() => removeImage(image.uri)}
+                  onPress={() => removeImage(media.uri)}
                 >
                   <MaterialIcons name="close" size={20} color="#fff" />
                 </TouchableOpacity>
