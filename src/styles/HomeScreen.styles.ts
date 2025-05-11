@@ -142,4 +142,33 @@ export const homeScreenStyles = StyleSheet.create({
     padding: 5,
     zIndex: 10,
   },
+  modalCloseButton: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 50 : 20, // Adjust top based on OS for status bar
+    right: 20,
+    zIndex: 20, // Ensure it's above other modal content
+    padding: 10, // Add padding to make it easier to tap
+  },
+  sheetModal: {
+    justifyContent: 'flex-end', // 화면 하단에 정렬
+    margin: 0, // 모달 주변 여백 제거
+  },
+  modalContent: {
+    backgroundColor: '#2c2c2e', // 어두운 테마의 경우 (밝은 테마는 'white')
+    paddingTop: 12, // 상단 핸들러처럼 보이게 하기 위한 여백 (선택적)
+    paddingHorizontal: 16,
+    paddingBottom: 20, // 또는 SafeAreaView 고려
+    borderTopRightRadius: 20,
+    borderTopLeftRadius: 20,
+    minHeight: 300, // 최소 높이
+    maxHeight: '90%', // 최대 높이
+    shadowColor: '#000', // 그림자 효과 (선택적)
+    shadowOffset: {
+      width: 0,
+      height: -3,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 10,
+  },
 });

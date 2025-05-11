@@ -356,6 +356,9 @@ export default function HomeScreen() {
                 isLoadingOcr={!!isLoadingOcr[previewMediaAsset.uri]}
               />
             )}
+            <TouchableOpacity style={styles.modalCloseButton} onPress={closePreview}>
+              <MaterialIcons name="close" size={30} color="#fff" />
+            </TouchableOpacity>
           </Animated.View>
         </TouchableWithoutFeedback>
       </Modal>
