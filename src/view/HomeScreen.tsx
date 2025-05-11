@@ -9,6 +9,7 @@ import { getInfoFromTextWithOpenAI } from '../api/openaiApi';
 import { extractTextFromVideo } from '../api/videoOcrApi';
 import ImagePreview from '../components/ImagePreview';
 import SummarizationSection from '../components/SummarizationSection';
+import VideoPreview from '../components/VideoPreview';
 import { homeScreenStyles as styles } from '../styles/HomeScreen.styles';
 
 interface SelectedImage {
@@ -258,6 +259,10 @@ export default function HomeScreen() {
     });
   };
 
+  const handleMediaPreview = (uri: string) => {
+    openPreview(uri);
+  };
+
   return (
     <ScrollView
       style={styles.container}
@@ -300,16 +305,23 @@ export default function HomeScreen() {
           >
             {selectedImages.map((media) => (
               <View key={media.uri} style={styles.imageWrapper}>
-                <TouchableOpacity
-                  onPress={() => openPreview(media.uri)}
-                  style={styles.imageTouchable}
-                >
-                  <ImagePreview
-                    image={media}
-                    ocrText={ocrResults[media.uri]}
-                    isLoadingOcr={isLoadingOcr[media.uri] || false}
+                {media.type === 'video' ? (
+                  <VideoPreview
+                    videoUri={media.uri}
+                    onPress={handleMediaPreview}
                   />
-                </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    onPress={() => openPreview(media.uri)}
+                    style={styles.imageTouchable}
+                  >
+                    <ImagePreview
+                      image={media}
+                      ocrText={ocrResults[media.uri]}
+                      isLoadingOcr={isLoadingOcr[media.uri] || false}
+                    />
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity
                   style={styles.deleteButton}
                   onPress={() => removeImage(media.uri)}
