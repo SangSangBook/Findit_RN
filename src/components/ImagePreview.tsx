@@ -31,9 +31,9 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrText, isLoadingOc
       )}
       
       {isLoadingOcr && (
-        <View style={styles.loadingIndicator}>
+        <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color="#fff" />
-          <Text style={styles.ocrText}>텍스트 인식 중...</Text>
+          <Text style={styles.loadingText}>텍스트 인식 중...</Text>
         </View>
       )}
       
