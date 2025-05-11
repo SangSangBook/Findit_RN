@@ -1,9 +1,10 @@
 import { GOOGLE_CLOUD_VISION_API_KEY, OPENAI_API_KEY } from '@env';
 import { MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import type { ImagePickerAsset } from 'expo-image-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Animated, Image, Modal, ScrollView, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, Image, Modal, ScrollView, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import { ocrWithGoogleVision } from '../api/googleVisionApi';
 import { getInfoFromTextWithOpenAI } from '../api/openaiApi';
 import { extractTextFromVideo } from '../api/videoOcrApi';
@@ -25,15 +26,15 @@ interface OcrLoadingState {
 }
 
 export default function HomeScreen() {
-  const [selectedImages, setSelectedImages] = useState<ImagePicker.ImagePickerAsset[]>([]);
+  const [selectedImages, setSelectedImages] = useState<ImagePickerAsset[]>([]);
+  const [infoResult, setInfoResult] = useState<string | null>(null);
   const [ocrResults, setOcrResults] = useState<{[uri: string]: string | null}>({});
   const [isLoadingOcr, setIsLoadingOcr] = useState<OcrLoadingState>({});
   const [questionText, setQuestionText] = useState<string>('');
-  const [infoResult, setInfoResult] = useState<string | null>(null);
+  const [previewMediaAsset, setPreviewMediaAsset] = useState<ImagePickerAsset | null>(null);
   const [isFetchingInfo, setIsFetchingInfo] = useState<boolean>(false);
   const [cameraPermissionStatus, setCameraPermissionStatus] = useState<ImagePicker.PermissionStatus | null>(null);
   const [assetUriMap, setAssetUriMap] = useState<{ [internalUri: string]: string | undefined }>({});
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const processImageWithOCR = async (imageUri: string) => {
@@ -226,15 +227,14 @@ export default function HomeScreen() {
       console.log('OpenAI Result:', result);
       setInfoResult(result);
     } catch (error) {
-      console.error('OpenAI 처리 오류:', error);
       setInfoResult('질문 처리 중 오류가 발생했습니다.');
     } finally {
       setIsFetchingInfo(false);
     }
   };
 
-  const openPreview = (uri: string) => {
-    setPreviewImage(uri);
+  const openPreview = (mediaAsset: ImagePickerAsset) => {
+    setPreviewMediaAsset(mediaAsset);
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 300,
@@ -247,7 +247,7 @@ export default function HomeScreen() {
       toValue: 0,
       duration: 300,
       useNativeDriver: true,
-    }).start(() => setPreviewImage(null));
+    }).start(() => setPreviewMediaAsset(null));
   };
 
   const removeImage = (uri: string) => {
@@ -259,8 +259,8 @@ export default function HomeScreen() {
     });
   };
 
-  const handleMediaPreview = (uri: string) => {
-    openPreview(uri);
+  const handleMediaPreview = (media: ImagePickerAsset) => {
+    openPreview(media);
   };
 
   return (
@@ -303,23 +303,24 @@ export default function HomeScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.imagesScrollContainer}
           >
-            {selectedImages.map((media) => (
-              <View key={media.uri} style={styles.imageWrapper}>
+            {selectedImages.map((media, index) => (
+              <View key={media.assetId || media.uri} style={styles.imageWrapper}>
                 {media.type === 'video' ? (
                   <VideoPreview
                     videoUri={media.uri}
-                    onPress={handleMediaPreview}
+                    onPress={() => handleMediaPreview(media)}
                   />
                 ) : (
                   <TouchableOpacity
-                    onPress={() => openPreview(media.uri)}
+                    onPress={() => handleMediaPreview(media)}
                     style={styles.imageTouchable}
                   >
-                    <ImagePreview
-                      image={media}
-                      ocrText={ocrResults[media.uri]}
-                      isLoadingOcr={isLoadingOcr[media.uri] || false}
-                    />
+                    <Image source={{ uri: media.uri }} style={styles.imageThumbnail} />
+                    {isLoadingOcr[media.uri] && (
+                      <View style={styles.loadingOverlayThumb}>
+                        <ActivityIndicator size="small" color="#fff" />
+                      </View>
+                    )}
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity
@@ -335,9 +336,9 @@ export default function HomeScreen() {
       )}
 
       <Modal
-        visible={!!previewImage}
-        transparent={true}
-        animationType="none"
+        visible={!!previewMediaAsset}
+        animationType="slide" // 아래에서 위로 올라오는 효과
+        presentationStyle={"pageSheet"} // iOS에서 시트 형태로 표시
         onRequestClose={closePreview}
       >
         <TouchableWithoutFeedback onPress={closePreview}>
@@ -347,13 +348,16 @@ export default function HomeScreen() {
               { opacity: fadeAnim },
             ]}
           >
-            {previewImage && (
-              <Image
-                source={{ uri: previewImage }}
-                style={styles.previewImage}
-                resizeMode="contain"
+            {previewMediaAsset && (
+              <ImagePreview
+                image={previewMediaAsset}
+                ocrText={ocrResults[previewMediaAsset.uri] || ''}
+                isLoadingOcr={!!isLoadingOcr[previewMediaAsset.uri]}
               />
             )}
+            <TouchableOpacity style={styles.modalCloseButton} onPress={closePreview}>
+              <MaterialIcons name="close" size={30} color="#fff" />
+            </TouchableOpacity>
           </Animated.View>
         </TouchableWithoutFeedback>
       </Modal>

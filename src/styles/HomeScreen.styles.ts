@@ -90,18 +90,27 @@ export const homeScreenStyles = StyleSheet.create({
     paddingVertical: 10,
   },
   imageWrapper: {
-    marginRight: 15,
-    borderRadius: 12,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 3,
     position: 'relative',
+    marginRight: 10, // 이미지 간 간격 추가
+  },
+  imageThumbnail: {
+    width: 100, 
+    height: 150, 
+    borderRadius: 12,
+    backgroundColor: '#e0e0e0',
+  },
+  loadingOverlayThumb: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderRadius: 12,
   },
   summarySection: {
     flex: 1,
@@ -132,5 +141,34 @@ export const homeScreenStyles = StyleSheet.create({
     borderRadius: 12,
     padding: 5,
     zIndex: 10,
+  },
+  modalCloseButton: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 50 : 20, // Adjust top based on OS for status bar
+    right: 20,
+    zIndex: 20, // Ensure it's above other modal content
+    padding: 10, // Add padding to make it easier to tap
+  },
+  sheetModal: {
+    justifyContent: 'flex-end', // 화면 하단에 정렬
+    margin: 0, // 모달 주변 여백 제거
+  },
+  modalContent: {
+    backgroundColor: '#2c2c2e', // 어두운 테마의 경우 (밝은 테마는 'white')
+    paddingTop: 12, // 상단 핸들러처럼 보이게 하기 위한 여백 (선택적)
+    paddingHorizontal: 16,
+    paddingBottom: 20, // 또는 SafeAreaView 고려
+    borderTopRightRadius: 20,
+    borderTopLeftRadius: 20,
+    minHeight: 300, // 최소 높이
+    maxHeight: '90%', // 최대 높이
+    shadowColor: '#000', // 그림자 효과 (선택적)
+    shadowOffset: {
+      width: 0,
+      height: -3,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 10,
   },
 });
