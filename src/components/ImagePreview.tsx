@@ -37,13 +37,6 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrText, isLoadingOc
         </View>
       )}
       
-      {ocrText && !isLoadingOcr && (
-        <View style={styles.ocrTextScrollView}>
-          <Text style={styles.ocrText} numberOfLines={3}>
-            {ocrText}
-          </Text>
-        </View>
-      )}
     </View>
   );
 };
