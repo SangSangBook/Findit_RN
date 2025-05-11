@@ -8,8 +8,8 @@ export const styles = StyleSheet.create({
     width: 150,
   },
   thumbnail: {
-    width: 100,
-    height: 100,
+    width: '100%',
+    aspectRatio: 1,
     borderRadius: 5,
     marginBottom: 5,
   },

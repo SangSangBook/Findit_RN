@@ -8,8 +8,8 @@ export const imagePreviewStyles = StyleSheet.create({
     width: 150,
   },
   previewImage: {
-    width: 100,
-    height: 100,
+    width: '100%',
+    aspectRatio: 1,
     borderRadius: 5,
     marginBottom: 5,
   },
