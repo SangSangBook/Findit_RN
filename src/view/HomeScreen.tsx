@@ -1,10 +1,10 @@
 import { GOOGLE_CLOUD_VISION_API_KEY, OPENAI_API_KEY } from '@env';
 import { MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import * as ImagePicker from 'expo-image-picker';
 import type { ImagePickerAsset } from 'expo-image-picker';
+import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Animated, Image, Modal, ScrollView, Text, TouchableOpacity, TouchableWithoutFeedback, View, ActivityIndicator } from 'react-native';
+import { ActivityIndicator, Alert, Animated, Image, Modal, ScrollView, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import { ocrWithGoogleVision } from '../api/googleVisionApi';
 import { getInfoFromTextWithOpenAI } from '../api/openaiApi';
 import { extractTextFromVideo } from '../api/videoOcrApi';
@@ -337,7 +337,6 @@ export default function HomeScreen() {
 
       <Modal
         visible={!!previewMediaAsset}
-        transparent={true} // 배경 투명도를 위해 true 유지, modalOverlay에서 배경색 제어
         animationType="slide" // 아래에서 위로 올라오는 효과
         presentationStyle={"pageSheet"} // iOS에서 시트 형태로 표시
         onRequestClose={closePreview}
