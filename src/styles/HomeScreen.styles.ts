@@ -90,18 +90,27 @@ export const homeScreenStyles = StyleSheet.create({
     paddingVertical: 10,
   },
   imageWrapper: {
-    marginRight: 15,
-    borderRadius: 12,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 3,
     position: 'relative',
+    marginRight: 10, // 이미지 간 간격 추가
+  },
+  imageThumbnail: {
+    width: 100, 
+    height: 150, 
+    borderRadius: 12,
+    backgroundColor: '#e0e0e0',
+  },
+  loadingOverlayThumb: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderRadius: 12,
   },
   summarySection: {
     flex: 1,
