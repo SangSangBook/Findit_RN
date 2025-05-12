@@ -35,35 +35,33 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  // Modal styles
   modal: {
-    margin: 0, // Ensures the modal can go screen edge to edge
-    justifyContent: 'flex-end', // Aligns the modal content (child) to the bottom
+    margin: 0,
+    justifyContent: 'flex-end',
   },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end', // Align modal to bottom
+    justifyContent: 'flex-end',
   },
   modalContentContainer: {
     backgroundColor: 'white',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10, // For SafeAreaView
-    maxHeight: '70%', // Limit height
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    maxHeight: '70%',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 15,
     paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
   },
   modalTitle: {
+    fontFamily: 'GmarketSansBold',
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
@@ -77,10 +75,10 @@ export const styles = StyleSheet.create({
     paddingVertical: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
+    paddingHorizontal: 20,
   },
   modalItemSelected: {
-    // Optional: if you want to highlight the selected item differently in the list itself
-    // backgroundColor: '#e0e0e0', 
+    backgroundColor: '#e0e0e0', 
   },
   itemIconCircle: {
     width: 28,
@@ -91,6 +89,7 @@ export const styles = StyleSheet.create({
     marginRight: 15,
   },
   modalItemText: {
+    fontFamily: 'GmarketSansMedium',
     fontSize: 16,
     color: '#333',
     flex: 1,
