@@ -9,33 +9,33 @@ export const homeScreenStyles = StyleSheet.create({
     flexGrow: 1,
   },
   header: {
-    flexDirection: 'row', // 가로 정렬
-    alignItems: 'center', // 세로 중앙 정렬
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
     paddingBottom: 20,
-    paddingHorizontal: 20, // 좌우 여백 추가
+    paddingHorizontal: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.8)',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0, 0, 0, 0.1)',
   },
   logo: {
-    width: 40, // 로고 크기 조정
+    width: 40,
     height: 40,
-    marginRight: 10, // 텍스트와 간격 추가
+    marginRight: 10,
   },
   headerTextContainer: {
-    flex: 1, // 텍스트가 남은 공간을 차지하도록 설정
+    flex: 1,
   },
   title: {
-    fontFamily: 'GmarketSansBold', // 폰트 변경
-    fontSize: 24, // 제목 크기 조정
+    fontFamily: 'GmarketSansBold',
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#2d3748',
-    marginBottom: 5, // 제목과 부제목 간격 조정
+    marginBottom: 5,
   },
   subtitle: {
-    fontFamily: 'GmarketSansLight', // 폰트 변경
-    fontSize: 14, // 부제목 크기 조정
+    fontFamily: 'GmarketSansLight',
+    fontSize: 14,
     color: '#718096',
   },
   buttonContainer: {
@@ -77,7 +77,6 @@ export const homeScreenStyles = StyleSheet.create({
   },
   imagesSection: {
     marginTop: 10,
-    paddingHorizontal: 20,
   },
   sectionTitle: {
     fontFamily: 'GmarketSansBold',
@@ -85,18 +84,20 @@ export const homeScreenStyles = StyleSheet.create({
     fontWeight: '600',
     color: '#2d3748',
     marginBottom: 15,
+    paddingHorizontal: 20,
   },
   imagesScrollContainer: {
     paddingVertical: 10,
+    paddingHorizontal: 20,
   },
   imageWrapper: {
     shadowRadius: 3,
     elevation: 3,
     position: 'relative',
-    marginRight: 10, // 이미지 간 간격 추가
+    marginRight: 10,
   },
   imageThumbnail: {
-    width: 150, 
+    width: '100%', 
     height: 150, 
     borderRadius: 12,
     backgroundColor: '#e0e0e0',
