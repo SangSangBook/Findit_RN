@@ -144,25 +144,25 @@ export const homeScreenStyles = StyleSheet.create({
   },
   modalCloseButton: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 50 : 20, // Adjust top based on OS for status bar
+    top: Platform.OS === 'ios' ? 50 : 20,
     right: 20,
-    zIndex: 20, // Ensure it's above other modal content
-    padding: 10, // Add padding to make it easier to tap
+    zIndex: 20,
+    padding: 10,
   },
   sheetModal: {
-    justifyContent: 'flex-end', // 화면 하단에 정렬
-    margin: 0, // 모달 주변 여백 제거
+    justifyContent: 'flex-end',
+    margin: 0,
   },
   modalContent: {
-    backgroundColor: '#2c2c2e', // 어두운 테마의 경우 (밝은 테마는 'white')
-    paddingTop: 12, // 상단 핸들러처럼 보이게 하기 위한 여백 (선택적)
+    backgroundColor: '#2c2c2e',
+    paddingTop: 12,
     paddingHorizontal: 16,
-    paddingBottom: 20, // 또는 SafeAreaView 고려
+    paddingBottom: 20,
     borderTopRightRadius: 20,
     borderTopLeftRadius: 20,
-    minHeight: 300, // 최소 높이
-    maxHeight: '90%', // 최대 높이
-    shadowColor: '#000', // 그림자 효과 (선택적)
+    minHeight: 300,
+    maxHeight: '90%',
+    shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: -3,
@@ -170,5 +170,62 @@ export const homeScreenStyles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 5,
     elevation: 10,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    color: '#fff',
+  },
+
+  // 이미지 유형 선택기 스타일
+  typeSelector: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+
+  // 이미지 유형 선택 모달 스타일
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  typeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    padding: 15,
+    marginVertical: 5,
+    borderRadius: 8,
+  },
+  typeOptionText: {
+    color: 'white',
+    marginLeft: 10,
+    fontSize: 16,
+  },
+  closeButton: {
+    marginTop: 20,
+    padding: 10,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 5,
+  },
+  closeButtonText: {
+    color: '#333',
+    fontSize: 16,
   },
 });

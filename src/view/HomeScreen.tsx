@@ -11,7 +11,9 @@ import { extractTextFromVideo } from '../api/videoOcrApi';
 import ImagePreview from '../components/ImagePreview';
 import SummarizationSection from '../components/SummarizationSection';
 import VideoPreview from '../components/VideoPreview';
+import { IMAGE_TYPE_COLORS, IMAGE_TYPE_ICONS, IMAGE_TYPE_PROMPTS, ImageType } from '../constants/ImageTypes';
 import { homeScreenStyles as styles } from '../styles/HomeScreen.styles';
+import { detectImageType } from '../utils/imageTypeDetector';
 
 interface SelectedImage {
   uri: string;
@@ -25,6 +27,10 @@ interface OcrLoadingState {
   [uri: string]: boolean;
 }
 
+interface ImageTypeState {
+  [uri: string]: ImageType;
+}
+
 export default function HomeScreen() {
   const [selectedImages, setSelectedImages] = useState<ImagePickerAsset[]>([]);
   const [infoResult, setInfoResult] = useState<string | null>(null);
@@ -35,6 +41,7 @@ export default function HomeScreen() {
   const [isFetchingInfo, setIsFetchingInfo] = useState<boolean>(false);
   const [cameraPermissionStatus, setCameraPermissionStatus] = useState<ImagePicker.PermissionStatus | null>(null);
   const [assetUriMap, setAssetUriMap] = useState<{ [internalUri: string]: string | undefined }>({});
+  const [imageTypes, setImageTypes] = useState<ImageTypeState>({});
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const processImageWithOCR = async (imageUri: string) => {
@@ -48,12 +55,16 @@ export default function HomeScreen() {
 
       if (text && text !== 'No text found in image.' && !text.includes('OCR failed')) {
         setOcrResults(prevResults => ({ ...prevResults, [imageUri]: text }));
+        const detectedType = detectImageType(text);
+        setImageTypes(prev => ({ ...prev, [imageUri]: detectedType }));
       } else {
         setOcrResults(prevResults => ({ ...prevResults, [imageUri]: null }));
+        setImageTypes(prev => ({ ...prev, [imageUri]: 'OTHER' }));
       }
     } catch (error) {
       console.error(`이미지 OCR 오류 (${imageUri}):`, error);
       setOcrResults(prevResults => ({ ...prevResults, [imageUri]: null }));
+      setImageTypes(prev => ({ ...prev, [imageUri]: 'OTHER' }));
     } finally {
       setIsLoadingOcr(prev => ({ ...prev, [imageUri]: false }));
     }
@@ -174,54 +185,52 @@ export default function HomeScreen() {
       setInfoResult('정보를 추출하려면 먼저 이미지나 비디오를 선택하거나 촬영해주세요.');
       return;
     }
-    const lastMedia = selectedImages[selectedImages.length - 1];
-    if (!lastMedia || !lastMedia.uri) {
-      setInfoResult('선택된 미디어가 유효하지 않습니다.');
-      return;
-    }
 
-    const lastMediaOcrText = ocrResults[lastMedia.uri];
-    if (!lastMediaOcrText) {
-      setInfoResult('선택된 미디어의 텍스트를 인식하지 못했습니다. 다른 미디어를 시도해주세요.');
-      return;
-    }
-
-    // 질문에서 특정 순서를 파악
     const question = questionText.trim();
     if (!question) {
       setInfoResult('질문을 입력해주세요.');
       return;
     }
 
-    let targetIndex = selectedImages.length - 1; // 기본적으로 마지막 사진
-    if (question.includes('첫 번째')) {
-      targetIndex = 0;
-    } else if (question.includes('두 번째')) {
-      targetIndex = 1;
-    } else if (question.includes('세 번째')) {
-      targetIndex = 2;
-    } else if (question.includes('네 번째')) {
-      targetIndex = 3;
-    } else if (question.includes('다섯 번째')) {
-      targetIndex = 4;
-    }
-
-    // 선택된 순서의 이미지 가져오기
-    const targetImage = selectedImages[targetIndex];
-    if (!targetImage || !targetImage.uri) {
-      setInfoResult('질문에 해당하는 이미지가 없습니다.');
-      return;
-    }
-
-    const ocrText = ocrResults[targetImage.uri];
-    if (!ocrText) {
-      setInfoResult('선택된 이미지의 텍스트를 인식하지 못했습니다. 다른 이미지를 시도해주세요.');
-      return;
-    }
-
     setIsFetchingInfo(true);
     try {
-      const textForOpenAI = `${ocrText}\n\n질문: ${question}`;
+      // 모든 이미지의 OCR 결과와 유형을 수집
+      const imageResults = selectedImages.map(image => {
+        const ocrText = ocrResults[image.uri];
+        const type = imageTypes[image.uri] || 'OTHER';
+        return { ocrText, type };
+      }).filter(result => result.ocrText);
+
+      if (imageResults.length === 0) {
+        setInfoResult('인식된 텍스트가 없습니다. 다른 이미지를 시도해주세요.');
+        return;
+      }
+
+      // 이미지 유형 한글 레이블
+      const typeLabels: Record<ImageType, string> = {
+        CONTRACT: '계약서',
+        PAYMENT: '영수증',
+        DOCUMENT: '문서',
+        PRODUCT: '제품',
+        OTHER: '기타'
+      };
+
+      // 각 이미지별로 유형에 맞는 프롬프트와 OCR 결과를 결합
+      const combinedText = imageResults
+        .map((result, index) => {
+          const typePrompt = IMAGE_TYPE_PROMPTS[result.type];
+          return `[이미지 ${index + 1} - ${typeLabels[result.type]}]\n${typePrompt}\n\n${result.ocrText}`;
+        })
+        .join('\n\n---\n\n');
+
+      // 질문에 이미지 유형 정보와 불일치 감지 요청을 포함
+      const enhancedQuestion = `다음은 ${imageResults.length}개의 이미지에 대한 OCR 결과입니다. 
+각 이미지의 유형에 맞게 정보를 추출해주세요.
+만약 이미지의 실제 내용이 지정된 유형과 일치하지 않는다면, 그 사실을 먼저 알려주고 실제 내용에 맞는 정보를 추출해주세요.
+
+${question}`;
+      
+      const textForOpenAI = `${combinedText}\n\n질문: ${enhancedQuestion}`;
       console.log('Sending to OpenAI:', textForOpenAI);
       const result = await getInfoFromTextWithOpenAI(textForOpenAI);
       console.log('OpenAI Result:', result);
@@ -262,6 +271,73 @@ export default function HomeScreen() {
   const handleMediaPreview = (media: ImagePickerAsset) => {
     openPreview(media);
   };
+
+  // 이미지 유형 변경 핸들러
+  const handleImageTypeChange = (uri: string, type: ImageType) => {
+    setImageTypes(prev => ({ ...prev, [uri]: type }));
+  };
+
+  // 이미지 유형 선택 모달 상태
+  const [selectedImageForType, setSelectedImageForType] = useState<ImagePickerAsset | null>(null);
+
+  // 이미지 유형 선택 UI 렌더링
+  const renderImageTypeSelector = (media: ImagePickerAsset) => {
+    const currentType = imageTypes[media.uri] || 'OTHER';
+    return (
+      <TouchableOpacity
+        style={[styles.typeSelector, { backgroundColor: IMAGE_TYPE_COLORS[currentType] }]}
+        onPress={() => setSelectedImageForType(media)}
+      >
+        <MaterialIcons name={IMAGE_TYPE_ICONS[currentType]} size={16} color="#fff" />
+      </TouchableOpacity>
+    );
+  };
+
+  // 이미지 유형 선택 모달
+  const renderTypeSelectionModal = () => (
+    <Modal
+      visible={!!selectedImageForType}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setSelectedImageForType(null)}
+    >
+      <View style={styles.modalContainer}>
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>이미지 유형 선택</Text>
+          {Object.entries(IMAGE_TYPE_ICONS).map(([type, icon]) => {
+            const typeLabels: Record<ImageType, string> = {
+              CONTRACT: '계약서',
+              PAYMENT: '정산/지출',
+              DOCUMENT: '논문/문서',
+              PRODUCT: '제품 설명',
+              OTHER: '기타'
+            };
+            return (
+              <TouchableOpacity
+                key={type}
+                style={[styles.typeOption, { backgroundColor: IMAGE_TYPE_COLORS[type as ImageType] }]}
+                onPress={() => {
+                  if (selectedImageForType) {
+                    handleImageTypeChange(selectedImageForType.uri, type as ImageType);
+                  }
+                  setSelectedImageForType(null);
+                }}
+              >
+                <MaterialIcons name={icon} size={24} color="#fff" />
+                <Text style={styles.typeOptionText}>{typeLabels[type as ImageType]}</Text>
+              </TouchableOpacity>
+            );
+          })}
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => setSelectedImageForType(null)}
+          >
+            <Text style={styles.closeButtonText}>닫기</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
 
   return (
     <ScrollView
@@ -321,6 +397,7 @@ export default function HomeScreen() {
                         <ActivityIndicator size="small" color="#fff" />
                       </View>
                     )}
+                    {renderImageTypeSelector(media)}
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity
@@ -334,6 +411,8 @@ export default function HomeScreen() {
           </ScrollView>
         </View>
       )}
+
+      {renderTypeSelectionModal()}
 
       <Modal
         visible={!!previewMediaAsset}
