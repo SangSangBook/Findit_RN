@@ -9,6 +9,7 @@ import { ocrWithGoogleVision } from '../api/googleVisionApi';
 import { getInfoFromTextWithOpenAI } from '../api/openaiApi';
 import { extractTextFromVideo } from '../api/videoOcrApi';
 import MediaPreviewModal from '../components/MediaPreviewModal'; // 새로 추가
+import ImageTypeSelector from '../components/ImageTypeSelector';
 import SummarizationSection from '../components/SummarizationSection';
 import VideoPreview from '../components/VideoPreview';
 import { IMAGE_TYPE_COLORS, IMAGE_TYPE_ICONS, IMAGE_TYPE_PROMPTS, ImageType } from '../constants/ImageTypes';
@@ -44,6 +45,10 @@ export default function HomeScreen() {
   const [assetUriMap, setAssetUriMap] = useState<{ [internalUri: string]: string | undefined }>({});
   const [imageTypes, setImageTypes] = useState<ImageTypeState>({});
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  const handleTypeChange = (uri: string, newType: ImageType) => {
+    setImageTypes(prev => ({ ...prev, [uri]: newType }));
+  };
 
   const processImageWithOCR = async (imageUri: string) => {
     setIsLoadingOcr(prev => ({ ...prev, [imageUri]: true }));
@@ -273,72 +278,10 @@ ${question}`;
     openPreview(media);
   };
 
-  // 이미지 유형 변경 핸들러
-  const handleImageTypeChange = (uri: string, type: ImageType) => {
-    setImageTypes(prev => ({ ...prev, [uri]: type }));
-  };
-
-  // 이미지 유형 선택 모달 상태
-  const [selectedImageForType, setSelectedImageForType] = useState<ImagePickerAsset | null>(null);
-
-  // 이미지 유형 선택 UI 렌더링
-  const renderImageTypeSelector = (media: ImagePickerAsset) => {
-    const currentType = imageTypes[media.uri] || 'OTHER';
-    return (
-      <TouchableOpacity
-        style={[styles.typeSelector, { backgroundColor: IMAGE_TYPE_COLORS[currentType] }]}
-        onPress={() => setSelectedImageForType(media)}
-      >
-        <MaterialIcons name={IMAGE_TYPE_ICONS[currentType]} size={16} color="#fff" />
-      </TouchableOpacity>
-    );
-  };
-
-  // 이미지 유형 선택 모달
-  const renderTypeSelectionModal = () => (
-    <Modal
-      visible={!!selectedImageForType}
-      transparent
-      animationType="slide"
-      onRequestClose={() => setSelectedImageForType(null)}
-    >
-      <View style={styles.modalContainer}>
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>이미지 유형 선택</Text>
-          {Object.entries(IMAGE_TYPE_ICONS).map(([type, icon]) => {
-            const typeLabels: Record<ImageType, string> = {
-              CONTRACT: '계약서',
-              PAYMENT: '정산/지출',
-              DOCUMENT: '논문/문서',
-              PRODUCT: '제품 설명',
-              OTHER: '기타'
-            };
-            return (
-              <TouchableOpacity
-                key={type}
-                style={[styles.typeOption, { backgroundColor: IMAGE_TYPE_COLORS[type as ImageType] }]}
-                onPress={() => {
-                  if (selectedImageForType) {
-                    handleImageTypeChange(selectedImageForType.uri, type as ImageType);
-                  }
-                  setSelectedImageForType(null);
-                }}
-              >
-                <MaterialIcons name={icon} size={24} color="#fff" />
-                <Text style={styles.typeOptionText}>{typeLabels[type as ImageType]}</Text>
-              </TouchableOpacity>
-            );
-          })}
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={() => setSelectedImageForType(null)}
-          >
-            <Text style={styles.closeButtonText}>닫기</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
-  );
+  // 이미지 유형 변경 핸들러는 ImageTypeSelector.tsx에서 가져온 onTypeChange 프롭으로 대체됩니다.
+  // const handleImageTypeChange = (uri: string, type: ImageType) => {
+  //   setImageTypes(prev => ({ ...prev, [uri]: type }));
+  // };
 
   return (
     <ScrollView
@@ -398,9 +341,14 @@ ${question}`;
                         <ActivityIndicator size="small" color="#fff" />
                       </View>
                     )}
-                    {renderImageTypeSelector(media)}
                   </TouchableOpacity>
                 )}
+                {/* Always show ImageTypeSelector if media exists, regardless of type */}
+                <ImageTypeSelector 
+                  uri={media.uri} 
+                  currentType={imageTypes[media.uri] || 'OTHER'} 
+                  onTypeChange={handleTypeChange} 
+                />
                 <TouchableOpacity
                   style={styles.deleteButton}
                   onPress={() => removeImage(media.uri)}
@@ -412,8 +360,6 @@ ${question}`;
           </ScrollView>
         </View>
       )}
-
-      {renderTypeSelectionModal()} 
 
       {/* 미디어 상세 보기 모달 (이전에 분리한 컴포넌트) */}
       <MediaPreviewModal
