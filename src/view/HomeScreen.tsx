@@ -369,7 +369,9 @@ ${question}`;
         ocrText={previewMediaAsset ? ocrResults[previewMediaAsset.uri] || null : null}
         isLoadingOcr={previewMediaAsset ? !!isLoadingOcr[previewMediaAsset.uri] : false}
         colorScheme={colorScheme}
-      />
+      >
+        <Text>이미지 유형: {imageTypes[previewMediaAsset?.uri || ''] || '기타'}</Text>
+      </MediaPreviewModal>
 
       <View style={styles.summarySection}>
         <SummarizationSection
