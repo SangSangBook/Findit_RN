@@ -422,7 +422,7 @@ ${question}`;
         onRequestClose={closePreview}
       >
         {previewMediaAsset && (
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1, backgroundColor: colorScheme === 'dark' ? '#1C1C1E' : '#F2F2F7' }}>
             <ImagePreview
               image={previewMediaAsset}
               ocrText={ocrResults[previewMediaAsset.uri] || ''}
