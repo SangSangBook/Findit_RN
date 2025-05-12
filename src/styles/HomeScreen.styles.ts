@@ -171,13 +171,8 @@ export const homeScreenStyles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 10,
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    color: '#fff',
-  },
-
+  // 여기서부터는 Step 104에서 추가된 스타일들이 이어집니다.
+  // 따라서 이 청크의 ReplacementContent는 이전 중복 스타일들을 삭제하는 효과를 줍니다.
   // 이미지 유형 선택기 스타일
   typeSelector: {
     position: 'absolute',
@@ -205,6 +200,12 @@ export const homeScreenStyles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    color: '#fff',
+  },
   typeOption: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -220,12 +221,14 @@ export const homeScreenStyles = StyleSheet.create({
   },
   closeButton: {
     marginTop: 20,
-    padding: 10,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 5,
+    padding: 12,
+    backgroundColor: '#6c757d',
+    borderRadius: 8,
+    alignItems: 'center',
   },
   closeButtonText: {
-    color: '#333',
+    color: '#ffffff',
     fontSize: 16,
+    fontWeight: '500',
   },
 });

@@ -1,14 +1,14 @@
 import { GOOGLE_CLOUD_VISION_API_KEY, OPENAI_API_KEY } from '@env';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons'; // MaterialIcons는 MediaPreviewModal에서 사용될 수 있으므로 유지하거나, HomeScreen에서 직접 사용되지 않으면 삭제 가능
 import { BlurView } from 'expo-blur';
 import type { ImagePickerAsset } from 'expo-image-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Animated, Image, Modal, ScrollView, Text, TouchableOpacity, View, useColorScheme } from 'react-native';
+import { ActivityIndicator, Alert, Animated, Image, Modal, ScrollView, Text, TouchableOpacity, View, useColorScheme } from 'react-native'; // Modal은 이미지 유형 선택에 사용
 import { ocrWithGoogleVision } from '../api/googleVisionApi';
 import { getInfoFromTextWithOpenAI } from '../api/openaiApi';
 import { extractTextFromVideo } from '../api/videoOcrApi';
-import ImagePreview from '../components/ImagePreview';
+import MediaPreviewModal from '../components/MediaPreviewModal'; // 새로 추가
 import SummarizationSection from '../components/SummarizationSection';
 import VideoPreview from '../components/VideoPreview';
 import { IMAGE_TYPE_COLORS, IMAGE_TYPE_ICONS, IMAGE_TYPE_PROMPTS, ImageType } from '../constants/ImageTypes';
@@ -413,27 +413,17 @@ ${question}`;
         </View>
       )}
 
-      {renderTypeSelectionModal()}
+      {renderTypeSelectionModal()} 
 
-      <Modal
+      {/* 미디어 상세 보기 모달 (이전에 분리한 컴포넌트) */}
+      <MediaPreviewModal
         visible={!!previewMediaAsset}
-        animationType="slide" // 아래에서 위로 올라오는 효과
-        presentationStyle={"pageSheet"} // iOS에서 시트 형태로 표시
-        onRequestClose={closePreview}
-      >
-        {previewMediaAsset && (
-          <View style={{ flex: 1, backgroundColor: colorScheme === 'dark' ? '#1C1C1E' : '#F2F2F7' }}>
-            <ImagePreview
-              image={previewMediaAsset}
-              ocrText={ocrResults[previewMediaAsset.uri] || ''}
-              isLoadingOcr={!!isLoadingOcr[previewMediaAsset.uri]}
-            />
-            <TouchableOpacity style={styles.modalCloseButton} onPress={closePreview}>
-              <MaterialIcons name="close" size={30} color={colorScheme === 'dark' ? '#fff' : '#000'} />
-            </TouchableOpacity>
-          </View>
-        )}
-      </Modal>
+        onClose={closePreview}
+        mediaAsset={previewMediaAsset}
+        ocrText={previewMediaAsset ? ocrResults[previewMediaAsset.uri] || null : null}
+        isLoadingOcr={previewMediaAsset ? !!isLoadingOcr[previewMediaAsset.uri] : false}
+        colorScheme={colorScheme}
+      />
 
       <View style={styles.summarySection}>
         <SummarizationSection
