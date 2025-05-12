@@ -4,15 +4,15 @@ import { BlurView } from 'expo-blur';
 import type { ImagePickerAsset } from 'expo-image-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Animated, Image, Modal, ScrollView, Text, TouchableOpacity, View, useColorScheme } from 'react-native'; // Modal은 이미지 유형 선택에 사용
+import { ActivityIndicator, Alert, Animated, Image, ScrollView, Text, TouchableOpacity, View, useColorScheme } from 'react-native'; // Modal은 이미지 유형 선택에 사용
 import { ocrWithGoogleVision } from '../api/googleVisionApi';
 import { getInfoFromTextWithOpenAI } from '../api/openaiApi';
 import { extractTextFromVideo } from '../api/videoOcrApi';
-import MediaPreviewModal from '../components/MediaPreviewModal'; // 새로 추가
 import ImageTypeSelector from '../components/ImageTypeSelector';
+import MediaPreviewModal from '../components/MediaPreviewModal'; // 새로 추가
 import SummarizationSection from '../components/SummarizationSection';
 import VideoPreview from '../components/VideoPreview';
-import { IMAGE_TYPE_COLORS, IMAGE_TYPE_ICONS, IMAGE_TYPE_PROMPTS, ImageType } from '../constants/ImageTypes';
+import { IMAGE_TYPE_PROMPTS, ImageType } from '../constants/ImageTypes';
 import { homeScreenStyles as styles } from '../styles/HomeScreen.styles';
 import { detectImageType } from '../utils/imageTypeDetector';
 

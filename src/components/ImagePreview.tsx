@@ -31,13 +31,13 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrText, isLoadingOc
 
   return (
     <TouchableWithoutFeedback onPress={stopPropagation}> 
-      <View style={styles.imageContainer}>
+      <View style={styles.previewDisplayContainer}>
         {image.type === 'video' ? (
           <TouchableWithoutFeedback onPress={handleVideoPress}>
             <Video
               ref={videoRef}
               source={{ uri: image.uri }}
-              style={styles.previewImage}
+              style={styles.previewMedia}
               resizeMode={ResizeMode.CONTAIN}
               useNativeControls={false}
               isLooping
@@ -53,7 +53,7 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrText, isLoadingOc
         ) : (
           <Image // 일반 Image 컴포넌트 사용
             source={{ uri: image.uri }}
-            style={styles.previewImage}
+            style={styles.previewMedia}
             resizeMode="contain"
           />
         )}
