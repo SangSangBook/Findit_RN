@@ -96,7 +96,7 @@ export const homeScreenStyles = StyleSheet.create({
     marginRight: 10, // 이미지 간 간격 추가
   },
   imageThumbnail: {
-    width: 100, 
+    width: 150, 
     height: 150, 
     borderRadius: 12,
     backgroundColor: '#e0e0e0',
