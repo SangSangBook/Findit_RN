@@ -20,7 +20,7 @@ export const getInfoFromTextWithOpenAI = async (text: string): Promise<string | 
   }
   try {
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4',
+      model: 'gpt-3.5-turbo',
       messages: [
         { 
           role: 'system', 
