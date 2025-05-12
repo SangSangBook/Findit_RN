@@ -1,8 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, Animated, TouchableOpacity, Easing, FlatList, TouchableWithoutFeedback, SafeAreaView } from 'react-native';
-import Modal from 'react-native-modal';
 import { MaterialIcons } from '@expo/vector-icons';
-import { IMAGE_TYPE_COLORS, IMAGE_TYPE_ICONS, ImageType, IMAGE_TYPE_NAMES } from '../constants/ImageTypes';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Easing, FlatList, SafeAreaView, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+import Modal from 'react-native-modal';
+import { IMAGE_TYPE_COLORS, IMAGE_TYPE_ICONS, IMAGE_TYPE_NAMES, ImageType } from '../constants/ImageTypes';
 import { styles } from '../styles/ImageTypeSelector.styles'; // Import styles
 
 interface ImageTypeSelectorProps {
@@ -78,7 +78,7 @@ const ImageTypeSelector: React.FC<ImageTypeSelectorProps> = ({ uri, currentType,
         animationIn="fadeInUp"
         animationOut="fadeOutDown"
         backdropOpacity={0.4}
-        style={styles.modal} // Add a style for the modal itself if needed, e.g., for positioning under the button
+        style={styles.modal}
       >
         <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
           <View style={styles.modalOverlay}>
