@@ -4,7 +4,7 @@ import { BlurView } from 'expo-blur';
 import type { ImagePickerAsset } from 'expo-image-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Animated, Image, Modal, ScrollView, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, Image, Modal, ScrollView, Text, TouchableOpacity, View, useColorScheme } from 'react-native';
 import { ocrWithGoogleVision } from '../api/googleVisionApi';
 import { getInfoFromTextWithOpenAI } from '../api/openaiApi';
 import { extractTextFromVideo } from '../api/videoOcrApi';
@@ -32,6 +32,7 @@ interface ImageTypeState {
 }
 
 export default function HomeScreen() {
+  const colorScheme = useColorScheme();
   const [selectedImages, setSelectedImages] = useState<ImagePickerAsset[]>([]);
   const [infoResult, setInfoResult] = useState<string | null>(null);
   const [ocrResults, setOcrResults] = useState<{[uri: string]: string | null}>({});
@@ -420,25 +421,18 @@ ${question}`;
         presentationStyle={"pageSheet"} // iOS에서 시트 형태로 표시
         onRequestClose={closePreview}
       >
-        <TouchableWithoutFeedback onPress={closePreview}>
-          <Animated.View
-            style={[
-              styles.modalOverlay,
-              { opacity: fadeAnim },
-            ]}
-          >
-            {previewMediaAsset && (
-              <ImagePreview
-                image={previewMediaAsset}
-                ocrText={ocrResults[previewMediaAsset.uri] || ''}
-                isLoadingOcr={!!isLoadingOcr[previewMediaAsset.uri]}
-              />
-            )}
+        {previewMediaAsset && (
+          <View style={{ flex: 1 }}>
+            <ImagePreview
+              image={previewMediaAsset}
+              ocrText={ocrResults[previewMediaAsset.uri] || ''}
+              isLoadingOcr={!!isLoadingOcr[previewMediaAsset.uri]}
+            />
             <TouchableOpacity style={styles.modalCloseButton} onPress={closePreview}>
-              <MaterialIcons name="close" size={30} color="#fff" />
+              <MaterialIcons name="close" size={30} color={colorScheme === 'dark' ? '#fff' : '#000'} />
             </TouchableOpacity>
-          </Animated.View>
-        </TouchableWithoutFeedback>
+          </View>
+        )}
       </Modal>
 
       <View style={styles.summarySection}>
