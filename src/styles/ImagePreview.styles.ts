@@ -1,20 +1,18 @@
 import { StyleSheet } from 'react-native';
 
 export const imagePreviewStyles = StyleSheet.create({
-  imageContainer: {
-    flex: 1, // Allow it to take available space
-    width: '100%', // Take full width
-    height: '100%', // Take full height
-    justifyContent: 'center', // Center content vertically
-    alignItems: 'center', // Center content horizontally
-    padding: 10, // Add some padding around the image/video
+  previewDisplayContainer: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 10,
   },
-  previewImage: {
-    width: '100%', // Fill the container width
-    height: '100%', // Fill the container height
-    borderRadius: 5,
-    // marginBottom: 5, // No longer needed if container handles spacing
-    // aspectRatio: 1, // Remove to respect original aspect ratio with resizeMode: 'contain'
+  previewMedia: {
+    width: '100%',
+    height: '100%',
+    // borderRadius: 12,
   },
   loadingOverlay: {
     position: 'absolute',
@@ -25,7 +23,7 @@ export const imagePreviewStyles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 5, // previewImage와 동일하게
+    // borderRadius: 12,
   },
   loadingText: {
     color: '#fff',
@@ -38,11 +36,18 @@ export const imagePreviewStyles = StyleSheet.create({
     marginTop: 5,
     padding: 5,
     backgroundColor: '#f0f0f0',
-    borderRadius: 3,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#ddd',
   },
   ocrText: {
     fontSize: 12,
   },
+  highlightCircle: {
+    position: 'absolute',
+    borderWidth: 3,
+    borderColor: 'red',
+    borderStyle: 'solid',
+    pointerEvents: 'none',
+  }
 }); 

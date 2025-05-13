@@ -53,6 +53,15 @@ export const IMAGE_TYPE_ICONS: Record<ImageType, keyof typeof MaterialIcons.glyp
   OTHER: 'help-outline'
 };
 
+// 이미지 유형별 이름 (한국어)
+export const IMAGE_TYPE_NAMES: Record<ImageType, string> = {
+  CONTRACT: '계약서',
+  PAYMENT: '정산/지출',
+  DOCUMENT: '논문/문서',
+  PRODUCT: '제품 설명서',
+  OTHER: '기타'
+};
+
 // 이미지 유형별 색상
 export const IMAGE_TYPE_COLORS: Record<ImageType, string> = {
   CONTRACT: '#4CAF50',  // 녹색

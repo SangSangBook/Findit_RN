@@ -9,33 +9,33 @@ export const homeScreenStyles = StyleSheet.create({
     flexGrow: 1,
   },
   header: {
-    flexDirection: 'row', // 가로 정렬
-    alignItems: 'center', // 세로 중앙 정렬
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
     paddingBottom: 20,
-    paddingHorizontal: 20, // 좌우 여백 추가
+    paddingHorizontal: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.8)',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0, 0, 0, 0.1)',
   },
   logo: {
-    width: 40, // 로고 크기 조정
+    width: 40,
     height: 40,
-    marginRight: 10, // 텍스트와 간격 추가
+    marginRight: 10,
   },
   headerTextContainer: {
-    flex: 1, // 텍스트가 남은 공간을 차지하도록 설정
+    flex: 1,
   },
   title: {
-    fontFamily: 'GmarketSansBold', // 폰트 변경
-    fontSize: 24, // 제목 크기 조정
+    fontFamily: 'GmarketSansBold',
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#2d3748',
-    marginBottom: 5, // 제목과 부제목 간격 조정
+    marginBottom: 5,
   },
   subtitle: {
-    fontFamily: 'GmarketSansLight', // 폰트 변경
-    fontSize: 14, // 부제목 크기 조정
+    fontFamily: 'GmarketSansLight',
+    fontSize: 14,
     color: '#718096',
   },
   buttonContainer: {
@@ -77,7 +77,6 @@ export const homeScreenStyles = StyleSheet.create({
   },
   imagesSection: {
     marginTop: 10,
-    paddingHorizontal: 20,
   },
   sectionTitle: {
     fontFamily: 'GmarketSansBold',
@@ -85,18 +84,20 @@ export const homeScreenStyles = StyleSheet.create({
     fontWeight: '600',
     color: '#2d3748',
     marginBottom: 15,
+    paddingHorizontal: 20,
   },
   imagesScrollContainer: {
     paddingVertical: 10,
+    paddingHorizontal: 20,
   },
   imageWrapper: {
     shadowRadius: 3,
     elevation: 3,
     position: 'relative',
-    marginRight: 10, // 이미지 간 간격 추가
+    marginRight: 10,
   },
   imageThumbnail: {
-    width: 100, 
+    width: '100%', 
     height: 150, 
     borderRadius: 12,
     backgroundColor: '#e0e0e0',
@@ -152,83 +153,5 @@ export const homeScreenStyles = StyleSheet.create({
   sheetModal: {
     justifyContent: 'flex-end',
     margin: 0,
-  },
-  modalContent: {
-    backgroundColor: '#2c2c2e',
-    paddingTop: 12,
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-    borderTopRightRadius: 20,
-    borderTopLeftRadius: 20,
-    minHeight: 300,
-    maxHeight: '90%',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: -3,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 10,
-  },
-  // 여기서부터는 Step 104에서 추가된 스타일들이 이어집니다.
-  // 따라서 이 청크의 ReplacementContent는 이전 중복 스타일들을 삭제하는 효과를 줍니다.
-  // 이미지 유형 선택기 스타일
-  typeSelector: {
-    position: 'absolute',
-    bottom: 8,
-    right: 8,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-
-  // 이미지 유형 선택 모달 스타일
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    color: '#fff',
-  },
-  typeOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
-    padding: 15,
-    marginVertical: 5,
-    borderRadius: 8,
-  },
-  typeOptionText: {
-    color: 'white',
-    marginLeft: 10,
-    fontSize: 16,
-  },
-  closeButton: {
-    marginTop: 20,
-    padding: 12,
-    backgroundColor: '#6c757d',
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  closeButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '500',
   },
 });

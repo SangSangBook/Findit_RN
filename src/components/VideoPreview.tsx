@@ -1,7 +1,7 @@
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import React, { useEffect, useState } from 'react';
 import { Image, TouchableOpacity } from 'react-native';
-import { styles } from '../styles/VideoPreview.styles';
+import { videoPreviewStyles } from '../styles/VideoPreview.styles';
 
 interface VideoPreviewProps {
   videoUri: string | null;
@@ -38,11 +38,11 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({ videoUri, onPress }) => {
   };
 
   return (
-    <TouchableOpacity style={styles.container} onPress={handlePress}>
+    <TouchableOpacity style={videoPreviewStyles.previewItemContainer} onPress={handlePress}>
       {thumbnailUri ? (
         <Image
           source={{ uri: thumbnailUri }}
-          style={styles.thumbnail}
+          style={videoPreviewStyles.previewMedia}
           resizeMode="cover"
         />
       ) : null}
