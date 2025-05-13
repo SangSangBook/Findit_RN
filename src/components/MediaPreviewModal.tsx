@@ -3,15 +3,15 @@ import { ImagePickerAsset } from 'expo-image-picker';
 import React, { useState } from 'react';
 import {
   ColorSchemeName,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
   TouchableWithoutFeedback,
-  Keyboard
+  View
 } from 'react-native';
 import { getThemedStyles } from '../styles/MediaPreviewModal.styles';
 import ImagePreview from './ImagePreview';
@@ -87,7 +87,7 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
                   onPress={Keyboard.dismiss}
                   accessibilityLabel="키보드 내리기"
                 >
-                  <MaterialIcons name="keyboard-hide" size={26} color="#666" />
+                  <MaterialIcons name="keyboard-hide" size={18} color="#666" />
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.searchButton}

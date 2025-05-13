@@ -47,11 +47,10 @@ export const getThemedStyles = (isDarkMode: boolean) => {
       },
       textInput: {
         flex: 1,
-        fontSize: 16,
+        fontSize: 14,
         padding: 0,
         color: textColor,
-        minHeight: 40,
-        maxHeight: 80,
+        textAlignVertical: 'center',
       },
       dismissKeyboardButton: {
         marginLeft: 8,
