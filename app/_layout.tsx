@@ -12,10 +12,18 @@ export default function RootLayout() {
 
   // 필요한 폰트 추가
   const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-    GmarketSansBold: require('../assets/fonts/GmarketSansTTFBold.ttf'), // 추가된 폰트
-    GmarketSansLight: require('../assets/fonts/GmarketSansTTFLight.ttf'), // 추가된 폰트
-    GmarketSansMedium: require('../assets/fonts/GmarketSansTTFMedium.ttf'), // 추가된 폰트
+    AppleSDGothicNeoM: require('../assets/fonts/AppleSDGothicNeoM.ttf'),
+    YdestreetB: require('../assets/fonts/YdestreetB.otf'),
+    YdestreetL: require('../assets/fonts/YdestreetL.otf'),
+    PretendardBold: require('../assets/fonts/Pretendard-Bold.otf'),
+    PretendardMedium: require('../assets/fonts/Pretendard-Medium.otf'),
+    PretendardRegular: require('../assets/fonts/Pretendard-Regular.otf'),
+    PretendardSemiBold: require('../assets/fonts/Pretendard-SemiBold.otf'),
+    PretendardThin: require('../assets/fonts/Pretendard-Thin.otf'),
+    PretendardLight: require('../assets/fonts/Pretendard-Light.otf'),
+    PretendardExtraBold: require('../assets/fonts/Pretendard-ExtraBold.otf'),
+    PretendardExtraLight: require('../assets/fonts/Pretendard-ExtraLight.otf'),
+    PretendardBlack: require('../assets/fonts/Pretendard-Black.otf'),
   });
 
   if (!loaded) {

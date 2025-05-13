@@ -5,8 +5,8 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import type { ImagePickerAsset } from 'expo-image-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Animated, Image, ScrollView, Text, TouchableOpacity, View, useColorScheme } from 'react-native'; // Modal은 이미지 유형 선택에 사용
-import type { OcrResult, OcrTextBox } from '../api/googleVisionApi';
+import { ActivityIndicator, Alert, Animated, Image, Platform, ScrollView, Text, TouchableOpacity, View, useColorScheme, ActionSheetIOS } from 'react-native';
+import type { OcrResult } from '../api/googleVisionApi';
 import { ocrWithGoogleVision } from '../api/googleVisionApi';
 import { getInfoFromTextWithOpenAI } from '../api/openaiApi';
 import { extractTextFromVideo } from '../api/videoOcrApi';
@@ -128,10 +128,43 @@ const [ocrResults, setOcrResults] = useState<{[uri: string]: OcrResult | null}>(
     return true; 
   };
 
+  const showMediaOptions = () => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['취소', '사진 보관함', '사진 찍기', '파일 선택'],
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            handleChooseMedia();
+          } else if (buttonIndex === 2) {
+            handleTakePhoto();
+          } else if (buttonIndex === 3) {
+            handleChooseDocument();
+          }
+        }
+      );
+    } else {
+      // Android용 Alert 다이얼로그
+      Alert.alert(
+        '미디어 선택',
+        '원하는 옵션을 선택하세요',
+        [
+          { text: '취소', style: 'cancel' },
+          { text: '사진 보관함', onPress: () => handleChooseMedia() },
+          { text: '사진 찍기', onPress: () => handleTakePhoto() },
+          { text: '파일 선택', onPress: () => handleChooseDocument() },
+        ],
+        { cancelable: true }
+      );
+    }
+  };
+
   const handleChooseMedia = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.All,
+        mediaTypes: ImagePicker.MediaTypeOptions.All, // Using MediaTypeOptions until updated to newer version
         allowsMultipleSelection: true,
         quality: 1,
       });
@@ -173,6 +206,28 @@ const [ocrResults, setOcrResults] = useState<{[uri: string]: OcrResult | null}>(
       Alert.alert('오류', '미디어를 선택하는 중 오류가 발생했습니다.');
     }
   };
+  
+  const handleChooseDocument = async () => {
+    try {
+      // 문서 선택 기능은 Expo의 DocumentPicker를 사용해야 하지만,
+      // 현재 프로젝트에 포함되어 있지 않아 알림으로 대체합니다.
+      Alert.alert(
+        '알림',
+        '문서 선택 기능을 사용하려면 expo-document-picker 패키지를 설치해야 합니다.',
+        [{ text: '확인', onPress: () => console.log('문서 선택 기능 필요') }]
+      );
+      
+      // 실제 구현은 아래와 같이 할 수 있습니다:
+      // import * as DocumentPicker from 'expo-document-picker';
+      // const result = await DocumentPicker.getDocumentAsync({ type: '*/*' });
+      // if (result.type === 'success') {
+      //   // 선택된 문서 처리
+      // }
+    } catch (error) {
+      console.error('문서 선택 오류:', error);
+      Alert.alert('오류', '문서를 선택하는 중 오류가 발생했습니다.');
+    }
+  };
 
   const handleTakePhoto = async () => {
     const hasPermission = await verifyCameraPermissions();
@@ -180,7 +235,7 @@ const [ocrResults, setOcrResults] = useState<{[uri: string]: OcrResult | null}>(
 
     try {
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images, // Using MediaTypeOptions until updated to newer version
         allowsEditing: false,
         quality: 1,
       });
@@ -324,14 +379,40 @@ const [ocrResults, setOcrResults] = useState<{[uri: string]: OcrResult | null}>(
       keyboardShouldPersistTaps="handled"
     >
       <BlurView intensity={20} style={styles.header}>
-        <Image style={styles.logo} source={require('../../assets/images/logoBlue.png')} />
+        {/* <Image style={styles.logo} source={require('../../assets/images/logoBlue.png')} /> */}
         <View style={styles.headerTextContainer}>
-          <Text style={styles.title}>찾기</Text>
-          <Text style={styles.subtitle}>미디어에서 정보를 찾아보세요</Text>
+          <Text style={styles.title}>Findit!</Text>
+          <Text style={styles.subtitle}>
+            미디어에서{'\n'}
+            정보를{'\n'}
+            찾아보세요{'\n'}
+          </Text>
         </View>
       </BlurView>
 
-      <View style={styles.buttonContainer}>
+      <View style={styles.summarySection}>
+        <SummarizationSection
+          questionText={questionText}
+          setQuestionText={setQuestionText}
+          handleGetInfo={handleGetInfo}
+          infoResult={infoResult}
+          isFetchingInfo={isFetchingInfo}
+        />
+        
+        <TouchableOpacity
+          style={styles.imageUploadButton}
+          onPress={showMediaOptions}
+        >
+          <MaterialIcons name="add" size={48} color="#8e8e8e" />
+          <Text style={styles.imageUploadButtonText}>미디어 업로드</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.getInfoButton} onPress={handleGetInfo}>
+          <Text style={styles.getInfoButtonText}>미디어 정보 가져오기</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={[styles.actionButton, styles.uploadButton]}
           onPress={handleChooseMedia}
@@ -347,7 +428,7 @@ const [ocrResults, setOcrResults] = useState<{[uri: string]: OcrResult | null}>(
           <MaterialIcons name="camera-alt" size={24} color="#fff" />
           <Text style={styles.buttonText}>사진 촬영</Text>
         </TouchableOpacity>
-      </View>
+      </View> */}
 
       {selectedImages.length > 0 && (
         <View style={styles.imagesSection}>
@@ -406,16 +487,6 @@ const [ocrResults, setOcrResults] = useState<{[uri: string]: OcrResult | null}>(
       >
         <Text>이미지 유형: {imageTypes[previewMediaAsset?.uri || ''] || '기타'}</Text>
       </MediaPreviewModal>
-
-      <View style={styles.summarySection}>
-        <SummarizationSection
-          questionText={questionText}
-          setQuestionText={setQuestionText}
-          handleGetInfo={handleGetInfo}
-          infoResult={infoResult}
-          isFetchingInfo={isFetchingInfo}
-        />
-      </View>
     </ScrollView>
   );
 }

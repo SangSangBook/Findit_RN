@@ -1,7 +1,6 @@
 // /Users/kkm/Findit_RN/Findit/src/components/SummarizationSection.tsx
 import React from 'react';
-import { View, Text, TextInput, ScrollView } from 'react-native';
-import Button from './Button'; // 공통 버튼 컴포넌트 임포트
+import { Text, TextInput, View } from 'react-native';
 import { summarizationSectionStyles as styles } from '../styles/SummarizationSection.styles';
 
 interface SummarizationSectionProps {
@@ -21,7 +20,7 @@ const SummarizationSection: React.FC<SummarizationSectionProps> = ({
 }) => {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>질문</Text>
+      <Text style={styles.title}>질문하기</Text>
       <TextInput
         style={styles.input}
         placeholder="이미지에 대해 질문해보세요."
@@ -32,7 +31,7 @@ const SummarizationSection: React.FC<SummarizationSectionProps> = ({
         scrollEnabled={true}
         textAlignVertical="top"
       />
-      <Button
+      {/* <Button
         title={isFetchingInfo ? "정보 가져오는 중..." : "정보 가져오기"}
         onPress={handleGetInfo}
         isLoading={isFetchingInfo}
@@ -41,7 +40,7 @@ const SummarizationSection: React.FC<SummarizationSectionProps> = ({
         <ScrollView style={styles.resultContainer}>
           <Text style={styles.resultText}>{infoResult}</Text>
         </ScrollView>
-      )}
+      )} */}
     </View>
   );
 };
