@@ -69,8 +69,8 @@ export const ocrWithGoogleVision = async (imageUri: string): Promise<OcrTextBox[
     if (data.responses && data.responses.length > 0) {
       const firstResponse = data.responses[0];
       if (firstResponse.textAnnotations && Array.isArray(firstResponse.textAnnotations)) {
-        // 첫 번째 항목은 전체 텍스트, 이후는 단어/문장별
-        return firstResponse.textAnnotations.map((anno: any) => ({
+        // 첫 번째 항목은 전체 텍스트(전체 박스), 이후는 단어/문장별. 전체 박스는 제외!
+        return firstResponse.textAnnotations.slice(1).map((anno: any) => ({
           description: anno.description,
           boundingPoly: anno.boundingPoly,
         }));

@@ -93,8 +93,13 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrText, isLoadingOc
     e.stopPropagation();
   };
 
+  // 검색어와 정확히 일치하는 OCR 결과만 필터링 (대소문자 무시)
   const matches = ocrText && searchTerm.length > 0
-    ? ocrText.filter(item => item.description.includes(searchTerm))
+    ? ocrText.filter(item => {
+        // 첫 번째 항목(전체 텍스트)은 제외 - API에서 이미 제거되었지만 안전장치로 추가
+        if (item.description.length > 100) return false;
+        return item.description.toLowerCase().includes(searchTerm.toLowerCase());
+      })
     : [];
 
   return (
@@ -127,13 +132,11 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrText, isLoadingOc
                 resizeMode="contain"
                 onLayout={onImageLayout}
               />
-              {/* SVG로 동그라미 오버레이 */}
-              {containerLayout && imageLayout && ocrText && searchTerm && searchTerm.length > 0 && (
+              {/* 검색 결과(매칭 OCR)만 네모 박스 오버레이, 전체 박스 없음 */}
+              {containerLayout && imageLayout && matches.length > 0 && (
                 (() => {
-                  // 원본 이미지 사이즈 (getSize 결과 우선, fallback은 imageLayout)
                   const origWidth = imageNaturalSize?.width || imageLayout.width;
                   const origHeight = imageNaturalSize?.height || imageLayout.height;
-                  // contain 모드에서 실제 이미지가 View 내에서 차지하는 영역 계산
                   const contained = getContainedImageLayout(
                     containerLayout.width,
                     containerLayout.height,
@@ -146,10 +149,10 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrText, isLoadingOc
                       width={contained.width}
                       height={contained.height}
                     >
+                      {/* 오직 matches만 돌면서 박스 그림. ocrText 전체에 대한 박스 없음 */}
                       {matches.map((item: OcrTextBox, idx: number) => {
                         if (!item.boundingPoly || !item.boundingPoly.vertices || item.boundingPoly.vertices.length < 4) return null;
                         const v = item.boundingPoly.vertices;
-                        // OCR 좌표를 실제 이미지 영역에 맞춰 스케일링
                         const scaleX = contained.width / origWidth;
                         const scaleY = contained.height / origHeight;
                         const x1 = v[0].x * scaleX;
@@ -165,9 +168,9 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrText, isLoadingOc
                             y={Math.min(y1, y2)}
                             width={boxWidth}
                             height={boxHeight}
-                            stroke="red"
+                            stroke="rgb(0, 255, 0)"
                             strokeWidth={3}
-                            fill="none"
+                            fill="rgba(0, 255, 0, 0.1)"
                             rx={4}
                             ry={4}
                           />
