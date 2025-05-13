@@ -4,12 +4,11 @@ import React, { useState } from 'react';
 import {
   ColorSchemeName,
   Modal,
-  Platform,
-  StyleSheet,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
+import { getThemedStyles } from '../styles/MediaPreviewModal.styles';
 import ImagePreview from './ImagePreview';
 
 interface MediaPreviewModalProps {
@@ -37,11 +36,7 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
   }
 
   const isDarkMode = colorScheme === 'dark';
-  const modalBackgroundColor = isDarkMode ? '#1C1C1E' : '#F2F2F7';
-  const closeButtonColor = isDarkMode ? '#FFFFFF' : '#000000';
-  const textFieldBg = isDarkMode ? '#232323' : '#fff';
-  const textFieldBorder = isDarkMode ? '#444' : '#ccc';
-  const textColor = isDarkMode ? '#fff' : '#000';
+  const { styles, closeButtonIconColor, placeholderTextColor } = getThemedStyles(isDarkMode);
 
   return (
     <Modal
@@ -51,29 +46,19 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
       onRequestClose={onClose}
       transparent={false} // Ensure modal has its own background
     >
-      <View style={[styles.modalContainer, { backgroundColor: modalBackgroundColor }]}>
+      <View style={styles.modalContainer}>
         <ImagePreview
           image={mediaAsset}
           ocrText={ocrText}
           isLoadingOcr={isLoadingOcr}
         />
         {/* 이미지 밑 텍스트 필드 */}
-        <View style={{ padding: 16 }}>
-          <View
-            style={{
-              backgroundColor: textFieldBg,
-              borderColor: textFieldBorder,
-              borderWidth: 1,
-              borderRadius: 8,
-              paddingHorizontal: 12,
-              paddingVertical: 8,
-              marginTop: 12,
-            }}
-          >
+        <View style={styles.textFieldWrapper}>
+          <View style={styles.textFieldContainer}>
             <TextInput
-              style={{ color: textColor, fontSize: 16 }}
+              style={styles.textInput}
               placeholder="텍스트를 입력하세요..."
-              placeholderTextColor={isDarkMode ? '#888' : '#aaa'}
+              placeholderTextColor={placeholderTextColor}
               value={textFieldValue}
               onChangeText={setTextFieldValue}
               multiline
@@ -81,25 +66,11 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
           </View>
         </View>
         <TouchableOpacity style={styles.modalCloseButton} onPress={onClose}>
-          <MaterialIcons name="close" size={30} color={closeButtonColor} />
+          <MaterialIcons name="close" size={30} color={closeButtonIconColor} />
         </TouchableOpacity>
       </View>
     </Modal>
   );
 };
-
-const styles = StyleSheet.create({
-  modalContainer: {
-    flex: 1,
-    // backgroundColor is set dynamically
-  },
-  modalCloseButton: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 50 : 20,
-    right: 20,
-    zIndex: 20,
-    padding: 10,
-  },
-});
 
 export default MediaPreviewModal;

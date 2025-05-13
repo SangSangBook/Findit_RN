@@ -7,12 +7,12 @@ export const imagePreviewStyles = StyleSheet.create({
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 10,
+    paddingHorizontal: 10,
   },
   previewMedia: {
     width: '100%',
     height: '100%',
-    borderRadius: 12,
+    // borderRadius: 12,
   },
   loadingOverlay: {
     position: 'absolute',
@@ -23,7 +23,7 @@ export const imagePreviewStyles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 12,
+    // borderRadius: 12,
   },
   loadingText: {
     color: '#fff',
