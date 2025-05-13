@@ -6,7 +6,7 @@ import type { ImagePickerAsset } from 'expo-image-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Animated, Image, ScrollView, Text, TouchableOpacity, View, useColorScheme } from 'react-native'; // Modal은 이미지 유형 선택에 사용
-import type { OcrTextBox } from '../api/googleVisionApi';
+import type { OcrResult, OcrTextBox } from '../api/googleVisionApi';
 import { ocrWithGoogleVision } from '../api/googleVisionApi';
 import { getInfoFromTextWithOpenAI } from '../api/openaiApi';
 import { extractTextFromVideo } from '../api/videoOcrApi';
@@ -38,7 +38,7 @@ export default function HomeScreen() {
   const colorScheme = useColorScheme();
   const [selectedImages, setSelectedImages] = useState<ImagePickerAsset[]>([]);
   const [infoResult, setInfoResult] = useState<string | null>(null);
-const [ocrResults, setOcrResults] = useState<{[uri: string]: OcrTextBox[] | null}>({});
+const [ocrResults, setOcrResults] = useState<{[uri: string]: OcrResult | null}>({});
   const [isLoadingOcr, setIsLoadingOcr] = useState<OcrLoadingState>({});
   const [questionText, setQuestionText] = useState<string>('');
   const [previewMediaAsset, setPreviewMediaAsset] = useState<ImagePickerAsset | null>(null);
@@ -55,16 +55,15 @@ const [ocrResults, setOcrResults] = useState<{[uri: string]: OcrTextBox[] | null
   const processImageWithOCR = async (imageUri: string) => {
     setIsLoadingOcr(prev => ({ ...prev, [imageUri]: true }));
     try {
-      const ocrTextBoxes = await ocrWithGoogleVision(imageUri);
+      const ocrResult = await ocrWithGoogleVision(imageUri);
       console.log('OCR Result:', {
         imageUri,
-        ocrTextBoxes
+        ocrResult
       });
 
-      if (ocrTextBoxes && ocrTextBoxes.length > 0) {
-        setOcrResults(prevResults => ({ ...prevResults, [imageUri]: ocrTextBoxes }));
-        const joinedText = ocrTextBoxes.map(x => x.description).join(' ');
-        const detectedType = detectImageType(joinedText);
+      if (ocrResult && ocrResult.textBoxes.length > 0) {
+        setOcrResults(prevResults => ({ ...prevResults, [imageUri]: ocrResult }));
+        const detectedType = detectImageType(ocrResult.fullText);
         setImageTypes(prev => ({ ...prev, [imageUri]: detectedType }));
       } else {
         setOcrResults(prevResults => ({ ...prevResults, [imageUri]: null }));
@@ -212,60 +211,70 @@ const [ocrResults, setOcrResults] = useState<{[uri: string]: OcrTextBox[] | null
   };
 
   const handleGetInfo = async () => {
+    // 선택된 이미지가 없으면 알림 표시
     if (selectedImages.length === 0) {
-      setInfoResult('정보를 추출하려면 먼저 이미지나 비디오를 선택하거나 촬영해주세요.');
+      Alert.alert('알림', '이미지를 먼저 선택해주세요.');
       return;
     }
 
-    const question = questionText.trim();
-    if (!question) {
-      setInfoResult('질문을 입력해주세요.');
+    // OCR 결과가 없는 이미지가 있으면 처리 중이라고 알림
+    const notProcessedImages = selectedImages.filter(img => !ocrResults[img.uri]);
+    if (notProcessedImages.length > 0) {
+      const isOcrRunning = Object.values(isLoadingOcr).some(loading => loading);
+      if (isOcrRunning) {
+        Alert.alert('처리 중', '일부 이미지의 텍스트 인식이 아직 진행 중입니다. 잠시 후 다시 시도해주세요.');
+      } else {
+        Alert.alert('텍스트 인식 필요', '일부 이미지에서 텍스트를 인식하지 못했습니다. 다시 시도해주세요.');
+      }
       return;
     }
 
     setIsFetchingInfo(true);
-    try {
-      // 모든 이미지의 OCR 결과와 유형을 수집
-      const imageResults = selectedImages.map(image => {
-        const ocrText = ocrResults[image.uri];
-        const type = imageTypes[image.uri] || 'OTHER';
-        return { ocrText, type };
-      }).filter(result => result.ocrText);
+    setInfoResult(null);
 
-      if (imageResults.length === 0) {
-        setInfoResult('인식된 텍스트가 없습니다. 다른 이미지를 시도해주세요.');
-        return;
+    try {
+      // 선택된 모든 이미지의 OCR 텍스트를 결합
+      let allText = '';
+      let questionPrompt = '';
+
+      // 이미지 유형에 따라 프롬프트 추가
+      selectedImages.forEach(img => {
+        const uri = img.uri;
+        const ocrResult = ocrResults[uri];
+        const imageType = imageTypes[uri] || 'OTHER';
+
+        if (ocrResult) {
+          // OCR 텍스트 결합 (전체 텍스트 사용)
+          allText += ocrResult.fullText + '\n\n';
+
+          // 이미지 유형에 따른 프롬프트 추가
+          const typePrompt = IMAGE_TYPE_PROMPTS[imageType];
+          if (typePrompt) {
+            questionPrompt += typePrompt + '\n';
+          }
+        }
+      });
+
+      // 사용자 질문 추가
+      if (questionText.trim()) {
+        questionPrompt += `질문: ${questionText.trim()}`;
       }
 
-      // 이미지 유형 한글 레이블
-      const typeLabels: Record<ImageType, string> = {
-        CONTRACT: '계약서',
-        PAYMENT: '영수증',
-        DOCUMENT: '문서',
-        PRODUCT: '제품',
-        OTHER: '기타'
-      };
+      // 최종 텍스트 구성
+      const finalText = allText + (questionPrompt ? '\n\n' + questionPrompt : '');
 
-      // 각 이미지별로 유형에 맞는 프롬프트와 OCR 결과를 결합
-      const combinedText = imageResults
-        .map((result, index) => {
-          const typePrompt = IMAGE_TYPE_PROMPTS[result.type];
-          return `[이미지 ${index + 1} - ${typeLabels[result.type]}]\n${typePrompt}\n\n${result.ocrText}`;
-        })
-        .join('\n\n---\n\n');
+      // OpenAI API 호출
+      const information = await getInfoFromTextWithOpenAI(finalText);
+      setInfoResult(information);
 
-      // 질문에 이미지 유형 정보와 불일치 감지 요청을 포함
-      const enhancedQuestion = `다음은 ${imageResults.length}개의 이미지에 대한 OCR 결과입니다. 
-각 이미지의 유형에 맞게 정보를 추출해주세요.
-만약 이미지의 실제 내용이 지정된 유형과 일치하지 않는다면, 그 사실을 먼저 알려주고 실제 내용에 맞는 정보를 추출해주세요.
+      // 애니메이션 효과 적용
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }).start();
 
-${question}`;
-      
-      const textForOpenAI = `${combinedText}\n\n질문: ${enhancedQuestion}`;
-      console.log('Sending to OpenAI:', textForOpenAI);
-      const result = await getInfoFromTextWithOpenAI(textForOpenAI);
-      console.log('OpenAI Result:', result);
-      setInfoResult(result);
+      console.log('Sending to OpenAI:', finalText);
     } catch (error) {
       setInfoResult('질문 처리 중 오류가 발생했습니다.');
     } finally {
@@ -391,7 +400,7 @@ ${question}`;
         visible={!!previewMediaAsset}
         onClose={closePreview}
         mediaAsset={previewMediaAsset}
-        ocrText={ocrResults[previewMediaAsset?.uri || '']}
+        ocrResult={ocrResults[previewMediaAsset?.uri || '']}
         isLoadingOcr={isLoadingOcr[previewMediaAsset?.uri || '']}
         colorScheme={colorScheme}
       >

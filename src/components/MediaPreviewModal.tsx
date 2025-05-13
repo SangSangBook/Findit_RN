@@ -16,13 +16,13 @@ import {
 import { getThemedStyles } from '../styles/MediaPreviewModal.styles';
 import ImagePreview from './ImagePreview';
 
-import type { OcrTextBox } from '../api/googleVisionApi';
+import type { OcrResult } from '../api/googleVisionApi';
 
 interface MediaPreviewModalProps {
   visible: boolean;
   onClose: () => void;
   mediaAsset: ImagePickerAsset | null;
-  ocrText: OcrTextBox[] | null;
+  ocrResult: OcrResult | null;
   isLoadingOcr: boolean;
   colorScheme: ColorSchemeName;
   children?: React.ReactNode;
@@ -33,7 +33,7 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
   visible,
   onClose,
   mediaAsset,
-  ocrText,
+  ocrResult,
   isLoadingOcr,
   colorScheme,
 }) => {
@@ -63,7 +63,7 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
         <View style={styles.modalContainer}>
           <ImagePreview
             image={mediaAsset}
-            ocrText={ocrText}
+            ocrResult={ocrResult}
             isLoadingOcr={isLoadingOcr}
             searchTerm={searchTerm}
           />

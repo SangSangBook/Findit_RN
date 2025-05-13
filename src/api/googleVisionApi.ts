@@ -13,9 +13,17 @@ if (!GOOGLE_CLOUD_VISION_API_KEY) {
 export interface OcrTextBox {
   description: string;
   boundingPoly: { vertices: { x: number; y: number }[] };
+  vertices?: { x: number; y: number }[];
+  x?: number;
+  y?: number;
 }
 
-export const ocrWithGoogleVision = async (imageUri: string): Promise<OcrTextBox[] | null> => {
+export interface OcrResult {
+  textBoxes: OcrTextBox[];
+  fullText: string;
+}
+
+export const ocrWithGoogleVision = async (imageUri: string): Promise<OcrResult | null> => {
   try {
     if (!imageUri) {
       console.warn('No image URI provided to ocrWithGoogleVision.');
@@ -59,7 +67,7 @@ export const ocrWithGoogleVision = async (imageUri: string): Promise<OcrTextBox[
     if (!response.ok) {
       const errorData = await response.json();
       console.error('Google Cloud Vision API Error:', errorData);
-      return [];
+      return null;
     }
 
     const data = await response.json();
@@ -69,11 +77,29 @@ export const ocrWithGoogleVision = async (imageUri: string): Promise<OcrTextBox[
     if (data.responses && data.responses.length > 0) {
       const firstResponse = data.responses[0];
       if (firstResponse.textAnnotations && Array.isArray(firstResponse.textAnnotations)) {
-        // 첫 번째 항목은 전체 텍스트(전체 박스), 이후는 단어/문장별. 전체 박스는 제외!
-        return firstResponse.textAnnotations.slice(1).map((anno: any) => ({
-          description: anno.description,
-          boundingPoly: anno.boundingPoly,
-        }));
+        // 첫 번째 항목은 전체 텍스트(전체 박스), 이후는 단어/문장별
+        const fullText = firstResponse.textAnnotations[0]?.description || '';
+        
+        // 단어/문장별 텍스트 박스 (첫 번째 항목 제외)
+        const textBoxes = firstResponse.textAnnotations.slice(1).map((anno: any) => {
+          const vertices = anno.boundingPoly?.vertices || [];
+          // 중심점 계산 (x, y)
+          const x = vertices.length > 0 ? vertices.reduce((sum: number, v: any) => sum + (v.x || 0), 0) / vertices.length : 0;
+          const y = vertices.length > 0 ? vertices.reduce((sum: number, v: any) => sum + (v.y || 0), 0) / vertices.length : 0;
+          
+          return {
+            description: anno.description,
+            boundingPoly: anno.boundingPoly,
+            vertices: vertices,
+            x: x,
+            y: y
+          };
+        });
+        
+        return {
+          textBoxes,
+          fullText
+        };
       } else if (firstResponse.error) {
         console.error('Google Cloud Vision API Error:', firstResponse.error.message);
         return null;

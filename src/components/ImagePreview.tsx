@@ -2,8 +2,8 @@ import { ResizeMode, Video } from 'expo-av';
 import { ImagePickerAsset } from 'expo-image-picker';
 import React, { useRef, useState } from 'react';
 import { ActivityIndicator, Image, Text, TouchableWithoutFeedback, View } from 'react-native';
-import Svg, { Rect } from 'react-native-svg';
-import type { OcrTextBox } from '../api/googleVisionApi';
+import Svg, { Rect, Text as SvgText } from 'react-native-svg';
+import type { OcrResult, OcrTextBox } from '../api/googleVisionApi';
 import { imagePreviewStyles as styles } from '../styles/ImagePreview.styles';
 
 interface ImageLayout {
@@ -13,12 +13,12 @@ interface ImageLayout {
 
 interface ImagePreviewProps {
   image: ImagePickerAsset;
-  ocrText: OcrTextBox[] | null;
+  ocrResult: OcrResult | null;
   isLoadingOcr: boolean;
   searchTerm?: string;
 }
 
-const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrText, isLoadingOcr, searchTerm = '' }) => {
+const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrResult, isLoadingOcr, searchTerm = '' }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [imageLayout, setImageLayout] = useState<ImageLayout | null>(null);
   const [containerLayout, setContainerLayout] = useState<ImageLayout | null>(null);
@@ -93,14 +93,19 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrText, isLoadingOc
     e.stopPropagation();
   };
 
-  // 검색어와 정확히 일치하는 OCR 결과만 필터링 (대소문자 무시)
-  const matches = ocrText && searchTerm.length > 0
-    ? ocrText.filter(item => {
-        // 첫 번째 항목(전체 텍스트)은 제외 - API에서 이미 제거되었지만 안전장치로 추가
+  // 검색어와 일치하는 OCR 결과만 필터링 (대소문자 무시)
+  const matches = ocrResult && searchTerm.length > 0
+    ? ocrResult.textBoxes.filter(item => {
+        // 너무 긴 텍스트는 제외 (안전장치)
         if (item.description.length > 100) return false;
         return item.description.toLowerCase().includes(searchTerm.toLowerCase());
       })
     : [];
+    
+  // 전체 텍스트 검색 결과 (검색어가 전체 텍스트에 있는지 확인)
+  const fullTextMatch = ocrResult && searchTerm.length > 0
+    ? ocrResult.fullText.toLowerCase().includes(searchTerm.toLowerCase())
+    : false;
 
   return (
     <TouchableWithoutFeedback onPress={stopPropagation}>
@@ -132,8 +137,8 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrText, isLoadingOc
                 resizeMode="contain"
                 onLayout={onImageLayout}
               />
-              {/* 검색 결과(매칭 OCR)만 네모 박스 오버레이, 전체 박스 없음 */}
-              {containerLayout && imageLayout && matches.length > 0 && (
+              {/* 검색 결과(매칭 OCR)만 네모 박스 오버레이 */}
+              {containerLayout && imageLayout && (matches.length > 0 || fullTextMatch) && (
                 (() => {
                   const origWidth = imageNaturalSize?.width || imageLayout.width;
                   const origHeight = imageNaturalSize?.height || imageLayout.height;
@@ -149,7 +154,35 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrText, isLoadingOc
                       width={contained.width}
                       height={contained.height}
                     >
-                      {/* 오직 matches만 돌면서 박스 그림. ocrText 전체에 대한 박스 없음 */}
+                      {/* 전체 텍스트 검색 결과가 있으면 전체 이미지에 표시 */}
+                      {fullTextMatch && matches.length === 0 && (
+                        <>
+                          <Rect
+                            x={0}
+                            y={0}
+                            width={contained.width}
+                            height={contained.height}
+                            stroke="rgba(255, 165, 0, 0.8)"
+                            strokeWidth={4}
+                            strokeDasharray="10,5"
+                            fill="rgba(255, 165, 0, 0.05)"
+                            rx={8}
+                            ry={8}
+                          />
+                          <SvgText
+                            x={contained.width / 2}
+                            y={20}
+                            fontSize="16"
+                            fontWeight="bold"
+                            fill="rgba(255, 165, 0, 0.9)"
+                            textAnchor="middle"
+                          >
+                            텍스트 발견됨
+                          </SvgText>
+                        </>
+                      )}
+                      
+                      {/* 개별 텍스트 매칭 박스 */}
                       {matches.map((item: OcrTextBox, idx: number) => {
                         if (!item.boundingPoly || !item.boundingPoly.vertices || item.boundingPoly.vertices.length < 4) return null;
                         const v = item.boundingPoly.vertices;
@@ -161,19 +194,33 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrText, isLoadingOc
                         const y2 = v[2].y * scaleY;
                         const boxWidth = Math.abs(x2 - x1);
                         const boxHeight = Math.abs(y2 - y1);
+                        const centerX = Math.min(x1, x2) + boxWidth / 2;
+                        const centerY = Math.min(y1, y2) + boxHeight / 2;
+                        
                         return (
-                          <Rect
-                            key={idx}
-                            x={Math.min(x1, x2)}
-                            y={Math.min(y1, y2)}
-                            width={boxWidth}
-                            height={boxHeight}
-                            stroke="rgb(0, 255, 0)"
-                            strokeWidth={3}
-                            fill="rgba(0, 255, 0, 0.1)"
-                            rx={4}
-                            ry={4}
-                          />
+                          <React.Fragment key={idx}>
+                            <Rect
+                              x={Math.min(x1, x2)}
+                              y={Math.min(y1, y2)}
+                              width={boxWidth}
+                              height={boxHeight}
+                              stroke="rgb(0, 255, 0)"
+                              strokeWidth={3}
+                              fill="rgba(0, 255, 0, 0.1)"
+                              rx={4}
+                              ry={4}
+                            />
+                            <SvgText
+                              x={centerX}
+                              y={Math.min(y1, y2) - 5}
+                              fontSize="12"
+                              fontWeight="bold"
+                              fill="rgb(0, 255, 0)"
+                              textAnchor="middle"
+                            >
+                              {item.description}
+                            </SvgText>
+                          </React.Fragment>
                         );
                       })}
                     </Svg>
