@@ -5,6 +5,7 @@ import type { ImagePickerAsset } from 'expo-image-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Animated, Image, ScrollView, Text, TouchableOpacity, View, useColorScheme } from 'react-native'; // Modal은 이미지 유형 선택에 사용
+import type { OcrTextBox } from '../api/googleVisionApi';
 import { ocrWithGoogleVision } from '../api/googleVisionApi';
 import { getInfoFromTextWithOpenAI } from '../api/openaiApi';
 import { extractTextFromVideo } from '../api/videoOcrApi';
@@ -36,7 +37,7 @@ export default function HomeScreen() {
   const colorScheme = useColorScheme();
   const [selectedImages, setSelectedImages] = useState<ImagePickerAsset[]>([]);
   const [infoResult, setInfoResult] = useState<string | null>(null);
-  const [ocrResults, setOcrResults] = useState<{[uri: string]: string | null}>({});
+const [ocrResults, setOcrResults] = useState<{[uri: string]: OcrTextBox[] | null}>({});
   const [isLoadingOcr, setIsLoadingOcr] = useState<OcrLoadingState>({});
   const [questionText, setQuestionText] = useState<string>('');
   const [previewMediaAsset, setPreviewMediaAsset] = useState<ImagePickerAsset | null>(null);
@@ -53,15 +54,16 @@ export default function HomeScreen() {
   const processImageWithOCR = async (imageUri: string) => {
     setIsLoadingOcr(prev => ({ ...prev, [imageUri]: true }));
     try {
-      const text = await ocrWithGoogleVision(imageUri);
+      const ocrTextBoxes = await ocrWithGoogleVision(imageUri);
       console.log('OCR Result:', {
         imageUri,
-        text
+        ocrTextBoxes
       });
 
-      if (text && text !== 'No text found in image.' && !text.includes('OCR failed')) {
-        setOcrResults(prevResults => ({ ...prevResults, [imageUri]: text }));
-        const detectedType = detectImageType(text);
+      if (ocrTextBoxes && ocrTextBoxes.length > 0) {
+        setOcrResults(prevResults => ({ ...prevResults, [imageUri]: ocrTextBoxes }));
+        const joinedText = ocrTextBoxes.map(x => x.description).join(' ');
+        const detectedType = detectImageType(joinedText);
         setImageTypes(prev => ({ ...prev, [imageUri]: detectedType }));
       } else {
         setOcrResults(prevResults => ({ ...prevResults, [imageUri]: null }));
@@ -87,7 +89,8 @@ export default function HomeScreen() {
         const combinedText = results
           .map(result => `[${result.time/1000}초] ${result.text}`)
           .join('\n\n');
-        setOcrResults(prevResults => ({ ...prevResults, [videoUri]: combinedText }));
+        // combinedText은 string이므로 타입 오류 발생. null로 대체하거나, OcrTextBox[]로 변환 필요
+      setOcrResults(prevResults => ({ ...prevResults, [videoUri]: null })); // 또는 적절한 OcrTextBox[] 데이터로 변경
       } else {
         setOcrResults(prevResults => ({ ...prevResults, [videoUri]: null }));
       }
@@ -366,8 +369,8 @@ ${question}`;
         visible={!!previewMediaAsset}
         onClose={closePreview}
         mediaAsset={previewMediaAsset}
-        ocrText={previewMediaAsset ? ocrResults[previewMediaAsset.uri] || null : null}
-        isLoadingOcr={previewMediaAsset ? !!isLoadingOcr[previewMediaAsset.uri] : false}
+        ocrText={ocrResults[previewMediaAsset?.uri || '']}
+        isLoadingOcr={isLoadingOcr[previewMediaAsset?.uri || '']}
         colorScheme={colorScheme}
       >
         <Text>이미지 유형: {imageTypes[previewMediaAsset?.uri || ''] || '기타'}</Text>

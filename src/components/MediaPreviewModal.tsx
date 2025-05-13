@@ -6,18 +6,22 @@ import {
   Modal,
   TextInput,
   TouchableOpacity,
-  View
+  View,
+  Text
 } from 'react-native';
 import { getThemedStyles } from '../styles/MediaPreviewModal.styles';
 import ImagePreview from './ImagePreview';
+
+import type { OcrTextBox } from '../api/googleVisionApi';
 
 interface MediaPreviewModalProps {
   visible: boolean;
   onClose: () => void;
   mediaAsset: ImagePickerAsset | null;
-  ocrText: string | null;
+  ocrText: OcrTextBox[] | null;
   isLoadingOcr: boolean;
   colorScheme: ColorSchemeName;
+  children?: React.ReactNode;
 }
 
 
@@ -30,6 +34,11 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
   colorScheme,
 }) => {
   const [textFieldValue, setTextFieldValue] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const handleSearch = () => {
+    setSearchTerm(textFieldValue);
+  };
 
   if (!mediaAsset) {
     return null;
@@ -51,8 +60,9 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
           image={mediaAsset}
           ocrText={ocrText}
           isLoadingOcr={isLoadingOcr}
+          searchTerm={searchTerm}
         />
-        {/* 이미지 밑 텍스트 필드 */}
+        {/* 이미지 밑 텍스트 필드와 검색 버튼 */}
         <View style={styles.textFieldWrapper}>
           <View style={styles.textFieldContainer}>
             <TextInput
@@ -64,6 +74,12 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
               multiline
             />
           </View>
+          <TouchableOpacity
+            style={{ marginTop: 10, backgroundColor: '#4299e1', borderRadius: 8, paddingVertical: 8, alignItems: 'center' }}
+            onPress={handleSearch}
+          >
+            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>검색</Text>
+          </TouchableOpacity>
         </View>
         <TouchableOpacity style={styles.modalCloseButton} onPress={onClose}>
           <MaterialIcons name="close" size={30} color={closeButtonIconColor} />

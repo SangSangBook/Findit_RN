@@ -43,4 +43,11 @@ export const imagePreviewStyles = StyleSheet.create({
   ocrText: {
     fontSize: 12,
   },
+  highlightCircle: {
+    position: 'absolute',
+    borderWidth: 3,
+    borderColor: 'red',
+    borderStyle: 'solid',
+    pointerEvents: 'none',
+  }
 }); 
