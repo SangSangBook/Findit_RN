@@ -1,6 +1,7 @@
 import { GOOGLE_CLOUD_VISION_API_KEY, OPENAI_API_KEY } from '@env';
 import { MaterialIcons } from '@expo/vector-icons'; // MaterialIcons는 MediaPreviewModal에서 사용될 수 있으므로 유지하거나, HomeScreen에서 직접 사용되지 않으면 삭제 가능
 import { BlurView } from 'expo-blur';
+import * as ImageManipulator from 'expo-image-manipulator';
 import type { ImagePickerAsset } from 'expo-image-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useRef, useState } from 'react';
@@ -137,15 +138,28 @@ const [ocrResults, setOcrResults] = useState<{[uri: string]: OcrTextBox[] | null
       });
 
       if (!result.canceled && result.assets) {
-        setSelectedImages(prevImages => [...prevImages, ...result.assets]);
+        // 정방향 변환 적용 (이미지에만)
+        const manipulatedAssets = await Promise.all(result.assets.map(async asset => {
+          if (asset.type === 'image' && asset.uri) {
+            const manipulated = await ImageManipulator.manipulateAsync(
+              asset.uri,
+              [], // no-op, just strip EXIF
+              { compress: 1, format: ImageManipulator.SaveFormat.JPEG }
+            );
+            return { ...asset, uri: manipulated.uri };
+          }
+          return asset;
+        }));
+
+        setSelectedImages(prevImages => [...prevImages, ...manipulatedAssets]);
         const newAssetUriMap = { ...assetUriMap };
-        result.assets.forEach(asset => {
+        manipulatedAssets.forEach(asset => {
           newAssetUriMap[asset.uri] = asset.assetId ?? undefined;
         });
         setAssetUriMap(newAssetUriMap);
 
         // 각 미디어에 대해 OCR 처리
-        for (const asset of result.assets) {
+        for (const asset of manipulatedAssets) {
           if (asset.uri) {
             if (asset.type === 'video') {
               await processVideoWithOCR(asset.uri);
@@ -173,7 +187,15 @@ const [ocrResults, setOcrResults] = useState<{[uri: string]: OcrTextBox[] | null
       });
 
       if (!result.canceled && result.assets) {
-        const newImage = result.assets[0];
+        let newImage = result.assets[0];
+        if (newImage.type === 'image' && newImage.uri) {
+          const manipulated = await ImageManipulator.manipulateAsync(
+            newImage.uri,
+            [], // no-op, just strip EXIF
+            { compress: 1, format: ImageManipulator.SaveFormat.JPEG }
+          );
+          newImage = { ...newImage, uri: manipulated.uri };
+        }
         setSelectedImages(prevImages => [...prevImages, newImage]);
         const newAssetUriMap = { ...assetUriMap };
         newAssetUriMap[newImage.uri] = newImage.assetId ?? undefined;

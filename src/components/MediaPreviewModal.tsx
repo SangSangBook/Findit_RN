@@ -3,11 +3,15 @@ import { ImagePickerAsset } from 'expo-image-picker';
 import React, { useState } from 'react';
 import {
   ColorSchemeName,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
+  Text,
   TextInput,
   TouchableOpacity,
   View,
-  Text
+  TouchableWithoutFeedback,
+  Keyboard
 } from 'react-native';
 import { getThemedStyles } from '../styles/MediaPreviewModal.styles';
 import ImagePreview from './ImagePreview';
@@ -55,36 +59,50 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
       onRequestClose={onClose}
       transparent={false} // Ensure modal has its own background
     >
-      <View style={styles.modalContainer}>
-        <ImagePreview
-          image={mediaAsset}
-          ocrText={ocrText}
-          isLoadingOcr={isLoadingOcr}
-          searchTerm={searchTerm}
-        />
-        {/* 이미지 밑 텍스트 필드와 검색 버튼 */}
-        <View style={styles.textFieldWrapper}>
-          <View style={styles.textFieldContainer}>
-            <TextInput
-              style={styles.textInput}
-              placeholder="텍스트를 입력하세요..."
-              placeholderTextColor={placeholderTextColor}
-              value={textFieldValue}
-              onChangeText={setTextFieldValue}
-              multiline
-            />
-          </View>
-          <TouchableOpacity
-            style={{ marginTop: 10, backgroundColor: '#4299e1', borderRadius: 8, paddingVertical: 8, alignItems: 'center' }}
-            onPress={handleSearch}
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <View style={styles.modalContainer}>
+          <ImagePreview
+            image={mediaAsset}
+            ocrText={ocrText}
+            isLoadingOcr={isLoadingOcr}
+            searchTerm={searchTerm}
+          />
+          {/* 이미지 밑 텍스트 필드와 검색 버튼 */}
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 32 : 0}
           >
-            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>검색</Text>
+            <View style={styles.textFieldWrapper}>
+              <View style={styles.textFieldContainerRow}>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="텍스트를 입력하세요..."
+                  placeholderTextColor={placeholderTextColor}
+                  value={textFieldValue}
+                  onChangeText={setTextFieldValue}
+                  multiline
+                />
+                <TouchableOpacity
+                  style={styles.dismissKeyboardButton}
+                  onPress={Keyboard.dismiss}
+                  accessibilityLabel="키보드 내리기"
+                >
+                  <MaterialIcons name="keyboard-hide" size={26} color="#666" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.searchButton}
+                  onPress={handleSearch}
+                >
+                  <Text style={styles.searchButtonText}>검색</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+          <TouchableOpacity style={styles.modalCloseButton} onPress={onClose}>
+            <MaterialIcons name="close" size={30} color={closeButtonIconColor} />
           </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.modalCloseButton} onPress={onClose}>
-          <MaterialIcons name="close" size={30} color={closeButtonIconColor} />
-        </TouchableOpacity>
-      </View>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 };
