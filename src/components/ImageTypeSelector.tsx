@@ -1,8 +1,8 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, FlatList, SafeAreaView, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+import { Animated, Easing, Text, TouchableOpacity, View } from 'react-native';
 import Modal from 'react-native-modal';
-import { IMAGE_TYPE_COLORS, IMAGE_TYPE_ICONS, IMAGE_TYPE_NAMES, ImageType } from '../constants/ImageTypes';
+import { IMAGE_TYPE_COLORS, IMAGE_TYPE_NAMES, ImageType } from '../constants/ImageTypes';
 import { styles } from '../styles/ImageTypeSelector.styles'; // Import styles
 
 interface ImageTypeSelectorProps {
@@ -70,50 +70,50 @@ const ImageTypeSelector: React.FC<ImageTypeSelectorProps> = ({ uri, currentType,
       <Modal
         isVisible={modalVisible}
         onBackdropPress={() => setModalVisible(false)}
-        animationIn="fadeInUp"
-        animationOut="fadeOutDown"
-        backdropOpacity={0.4}
+        onSwipeComplete={() => setModalVisible(false)}
+        swipeDirection={['down']}
         style={styles.modal}
+        backdropOpacity={0.4}
+        animationIn="slideInUp"
+        animationOut="slideOutDown"
+        propagateSwipe={true}
       >
-        <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
-          <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback>
-              <SafeAreaView style={styles.modalContentContainer}>
-                <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>유형 선택</Text>
-                  <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}>
-                    <MaterialIcons name="close" size={24} color="#333" />
-                  </TouchableOpacity>
-                </View>
-                <FlatList
-                  data={pickerItems}
-                  keyExtractor={(item) => item.value}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      style={[
-                        styles.modalItem,
-                        item.value === selectedType && styles.modalItemSelected
-                      ]}
-                      onPress={() => handleTypeSelect(item.value)}
-                    >
-                      <View style={[styles.itemIconCircle, { backgroundColor: IMAGE_TYPE_COLORS[item.value] || '#ccc' }]}>
-                        <MaterialIcons
-                          name={IMAGE_TYPE_ICONS[item.value] as keyof typeof MaterialIcons.glyphMap}
-                          size={18}
-                          color="white"
-                        />
-                      </View>
-                      <Text style={styles.modalItemText}>{item.label}</Text>
-                      {item.value === selectedType && (
-                        <MaterialIcons name="check-circle" size={20} color={IMAGE_TYPE_COLORS[item.value]} />
-                      )}
-                    </TouchableOpacity>
-                  )}
-                />
-              </SafeAreaView>
-            </TouchableWithoutFeedback>
+        <View style={styles.modalContentContainer}>
+          <View style={styles.swipeIndicator} />
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>유형선택</Text>
           </View>
-        </TouchableWithoutFeedback>
+          <View>
+            {pickerItems.map((item) => (
+              <TouchableOpacity
+                key={item.value}
+                style={[
+                  styles.modalItem,
+                  item.value === selectedType && styles.modalItemSelected
+                ]}
+                onPress={() => handleTypeSelect(item.value)}
+              >
+                <View style={[
+                  styles.itemIconCircle, 
+                  { 
+                    backgroundColor: IMAGE_TYPE_COLORS[item.value] || '#ccc',
+                    opacity: item.value === selectedType ? 1 : 0.5
+                  }
+                ]}>
+                </View>
+                <Text style={[
+                  styles.modalItemText,
+                  { opacity: item.value === selectedType ? 1 : 0.5 }
+                ]}>
+                  {item.label}
+                </Text>
+                {item.value === selectedType && (
+                  <MaterialIcons name="check" size={24} color={IMAGE_TYPE_COLORS[item.value]} />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
       </Modal>
     </Animated.View>
   );
