@@ -62,13 +62,16 @@ export const getInfoFromTextWithOpenAI = async (text: string): Promise<string | 
     });
 
     const information = completion.choices[0]?.message?.content;
-    return information || '텍스트에서 정보를 가져올 수 없습니다.';
+    if (!information || information.trim() === '') {
+      throw new Error('OpenAI 응답이 비어 있습니다.');
+    }
+    return information;
 
   } catch (error) {
     console.error('정보 추출을 위해 OpenAI API 호출 중 오류:', error);
     if (error instanceof OpenAI.APIError) {
         return `OpenAI API 오류: ${error.status} ${error.name} ${error.message}`;
     }
-    return '예기치 않은 오류로 인해 정보를 추출하지 못했습니다.';
+    return 'OpenAI 응답이 없거나, 예기치 않은 오류로 인해 정보를 추출하지 못했습니다.';
   }
 };
