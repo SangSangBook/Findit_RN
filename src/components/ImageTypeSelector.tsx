@@ -133,6 +133,7 @@ const ImageTypeSelector: React.FC<ImageTypeSelectorProps> = ({ uri, currentType,
         animationIn="slideInUp"
         animationOut="slideOutDown"
         propagateSwipe={true}
+        statusBarTranslucent={true}
       >
         <View style={styles.modalContentContainer}>
           <View style={styles.swipeIndicator} />

@@ -5,14 +5,13 @@ import {
   ColorSchemeName,
   Keyboard,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Text,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View
 } from 'react-native';
+import Modal from 'react-native-modal';
 import { getThemedStyles } from '../styles/MediaPreviewModal.styles';
 import ImagePreview from './ImagePreview';
 
@@ -27,7 +26,6 @@ interface MediaPreviewModalProps {
   colorScheme: ColorSchemeName;
   children?: React.ReactNode;
 }
-
 
 const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
   visible,
@@ -53,21 +51,34 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
 
   return (
     <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-      transparent={false} // Ensure modal has its own background
+      isVisible={visible}
+      onBackdropPress={onClose}
+      onSwipeComplete={onClose}
+      swipeDirection={['down']}
+      style={styles.modal}
+      backdropOpacity={0.4}
+      animationIn="slideInUp"
+      animationOut="slideOutDown"
+      propagateSwipe={true}
+      statusBarTranslucent={true}
     >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-        <View style={styles.modalContainer}>
+      <View style={styles.bottomSheet}>
+        <View style={styles.bottomSheetHeader}>
+          <View style={styles.bottomSheetHandle} />
+        </View>
+        
+        <View style={styles.bottomSheetContent}>
+          <View style={styles.previewTitleContainer}>
+            <Text style={styles.previewTitle}>선택한 사진</Text>
+            <Text style={[styles.previewTitle, styles.previewTitleDot]}> .</Text>
+          </View>
           <ImagePreview
             image={mediaAsset}
             ocrResult={ocrResult}
             isLoadingOcr={isLoadingOcr}
             searchTerm={searchTerm}
           />
-          {/* 이미지 밑 텍스트 필드와 검색 버튼 */}
+          
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 32 : 0}
@@ -98,11 +109,8 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
               </View>
             </View>
           </KeyboardAvoidingView>
-          <TouchableOpacity style={styles.modalCloseButton} onPress={onClose}>
-            <MaterialIcons name="close" size={30} color={closeButtonIconColor} />
-          </TouchableOpacity>
         </View>
-      </TouchableWithoutFeedback>
+      </View>
     </Modal>
   );
 };

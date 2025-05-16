@@ -5,9 +5,8 @@ export const imagePreviewStyles = StyleSheet.create({
     flex: 1,
     width: '100%',
     height: '100%',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     alignItems: 'center',
-    paddingHorizontal: 10,
   },
   previewMedia: {
     width: '100%',

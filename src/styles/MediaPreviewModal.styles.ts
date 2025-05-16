@@ -10,19 +10,51 @@ export const getThemedStyles = (isDarkMode: boolean) => {
 
   return {
     styles: StyleSheet.create({
-      modalContainer: {
-        flex: 1,
-        backgroundColor: modalBackgroundColor,
+      modal: {
+        margin: 0,
+        justifyContent: 'flex-end',
       },
-      modalCloseButton: {
-        position: 'absolute',
-        top: Platform.OS === 'ios' ? 20 : 20,
-        right: 20,
-        zIndex: 20,
-        padding: 10,
+      bottomSheet: {
+        backgroundColor: modalBackgroundColor,
+        borderTopLeftRadius: 16,
+        borderTopRightRadius: 16,
+        height: '80%',
+      },
+      bottomSheetHeader: {
+        alignItems: 'center',
+        paddingVertical: 12,
+      },
+      bottomSheetHandle: {
+        width: 50,
+        height: 4,
+        backgroundColor: '#8E8E8E',
+        borderRadius: 1.5,
+        alignSelf: 'center',
+        marginTop: 8,
+      },
+      bottomSheetContent: {
+        flex: 1,
+        paddingHorizontal: 16,
+        paddingBottom: Platform.OS === 'android' ? 20 : 0,
+      },
+      previewTitleContainer: {
+        flexDirection: 'row',
+      },
+      previewTitle: {
+        fontFamily: 'PretendardSemiBold',
+        fontSize: 22,
+        color: '#222222',
+      },
+      previewTitleDot: {
+        color: '#46B876',
       },
       textFieldWrapper: {
-        padding: 24,
+        padding: 16,
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: modalBackgroundColor,
       },
       textFieldContainer: {
         backgroundColor: textFieldBg,
@@ -30,11 +62,7 @@ export const getThemedStyles = (isDarkMode: boolean) => {
         borderWidth: 1,
         borderRadius: 12,
         paddingHorizontal: 12,
-        paddingVertical: 4,
         marginBottom: 10,
-      },
-      textFieldWrapperRow: {
-        padding: 16,
       },
       textFieldContainerRow: {
         flexDirection: 'row',
@@ -42,7 +70,6 @@ export const getThemedStyles = (isDarkMode: boolean) => {
         backgroundColor: textFieldBg,
         borderRadius: 8,
         paddingHorizontal: 12,
-        paddingVertical: 8,
         marginBottom: 10,
       },
       textInput: {
