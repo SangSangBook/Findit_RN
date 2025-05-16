@@ -216,33 +216,20 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrResult, isLoading
                         const y2 = v[2].y * scaleY;
                         const boxWidth = Math.abs(x2 - x1);
                         const boxHeight = Math.abs(y2 - y1);
-                        const centerX = Math.min(x1, x2) + boxWidth / 2;
-                        const centerY = Math.min(y1, y2) + boxHeight / 2;
                         
                         return (
-                          <React.Fragment key={idx}>
-                            <Rect
-                              x={Math.min(x1, x2)}
-                              y={Math.min(y1, y2)}
-                              width={boxWidth}
-                              height={boxHeight}
-                              stroke="rgb(0, 255, 0)"
-                              strokeWidth={3}
-                              fill="rgba(0, 255, 0, 0.1)"
-                              rx={4}
-                              ry={4}
-                            />
-                            <SvgText
-                              x={centerX}
-                              y={Math.min(y1, y2) - 5}
-                              fontSize="12"
-                              fontWeight="bold"
-                              fill="rgb(0, 255, 0)"
-                              textAnchor="middle"
-                            >
-                              {item.description}
-                            </SvgText>
-                          </React.Fragment>
+                          <Rect
+                            key={idx}
+                            x={Math.min(x1, x2)}
+                            y={Math.min(y1, y2)}
+                            width={boxWidth}
+                            height={boxHeight}
+                            stroke="rgba(70, 230, 120, 0.8)"
+                            strokeWidth={2}
+                            fill="rgba(70, 230, 120, 0.4)"
+                            rx={4}
+                            ry={4}
+                          />
                         );
                       })}
                     </Svg>
