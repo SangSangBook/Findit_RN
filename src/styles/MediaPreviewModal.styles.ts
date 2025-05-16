@@ -1,7 +1,7 @@
 import { Platform, StyleSheet } from 'react-native';
 
 export const getThemedStyles = (isDarkMode: boolean) => {
-  const modalBackgroundColor = isDarkMode ? '#1C1C1E' : '#F2F2F7';
+  const modalBackgroundColor = isDarkMode ? '#1C1C1E' : '#ffffff';
   const closeButtonIconColor = isDarkMode ? '#FFFFFF' : '#000000';
   const textFieldBg = isDarkMode ? '#232323' : '#fff';
   const textFieldBorder = isDarkMode ? '#444' : '#ccc';
@@ -49,18 +49,11 @@ export const getThemedStyles = (isDarkMode: boolean) => {
         color: '#46B876',
       },
       textFieldWrapper: {
-        padding: 16,
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        backgroundColor: modalBackgroundColor,
+        marginVertical: 16,
+        backgroundColor: 'transparent',
       },
       textFieldContainer: {
         backgroundColor: textFieldBg,
-        borderColor: textFieldBorder,
-        borderWidth: 1,
-        borderRadius: 12,
         paddingHorizontal: 12,
         marginBottom: 10,
       },
@@ -68,9 +61,8 @@ export const getThemedStyles = (isDarkMode: boolean) => {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: textFieldBg,
-        borderRadius: 8,
         paddingHorizontal: 12,
-        marginBottom: 10,
+        marginBottom: 0,
       },
       textInput: {
         flex: 1,
@@ -78,6 +70,9 @@ export const getThemedStyles = (isDarkMode: boolean) => {
         padding: 0,
         color: textColor,
         textAlignVertical: 'center',
+        minHeight: 40,
+        maxHeight: 40,
+        height: 40,
       },
       dismissKeyboardButton: {
         marginLeft: 8,
@@ -100,8 +95,49 @@ export const getThemedStyles = (isDarkMode: boolean) => {
         fontWeight: 'bold',
         fontSize: 16,
       },
+      clearButton: {
+        marginLeft: 8,
+        padding: 6,
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: 40,
+      },
     }),
     closeButtonIconColor,
     placeholderTextColor,
   };
 };
+
+export const mediaPreviewModalStyles = StyleSheet.create({
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    flex: 1,
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: 'hidden',
+  },
+  previewContainer: {
+    flex: 1,
+    width: '100%',
+  },
+  textFieldWrapper: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderTopWidth: 1,
+    borderTopColor: '#ddd',
+  },
+  textField: {
+    backgroundColor: 'white',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+});

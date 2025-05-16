@@ -1,7 +1,7 @@
 import { ResizeMode, Video } from 'expo-av';
 import { ImagePickerAsset } from 'expo-image-picker';
-import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Image, Text, TouchableWithoutFeedback, View } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { Image, Keyboard, TouchableWithoutFeedback, View } from 'react-native';
 import Svg, { Rect, Text as SvgText } from 'react-native-svg';
 import type { OcrResult, OcrTextBox } from '../api/googleVisionApi';
 import { imagePreviewStyles as styles } from '../styles/ImagePreview.styles';
@@ -24,28 +24,6 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrResult, isLoading
   const [containerLayout, setContainerLayout] = useState<ImageLayout | null>(null);
   const [imageNaturalSize, setImageNaturalSize] = useState<{ width: number; height: number } | null>(null);
   
-  // 로딩 애니메이션을 위한 Animated 값
-  const rotateAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (isLoadingOcr) {
-      Animated.loop(
-        Animated.timing(rotateAnim, {
-          toValue: 1,
-          duration: 2000,
-          useNativeDriver: false,
-        })
-      ).start();
-    } else {
-      rotateAnim.setValue(0);
-    }
-  }, [isLoadingOcr]);
-
-  const spin = rotateAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg']
-  });
-
   // 원본 이미지 크기 가져오기 (Image.getSize)
   React.useEffect(() => {
     if (image?.uri) {
@@ -78,21 +56,21 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrResult, isLoading
     imgW: number,
     imgH: number
   ) {
-    const containerRatio = containerW / containerH;
+    const containerRatio = containerW / (containerH * 0.6); // Adjust for 60% height
     const imageRatio = imgW / imgH;
     let width = containerW;
-    let height = containerH;
+    let height = containerH * 0.6; // Set height to 60% of container
     let offsetX = 0;
     let offsetY = 0;
     if (imageRatio > containerRatio) {
       // 이미지가 더 넓음
       width = containerW;
       height = containerW / imageRatio;
-      offsetY = (containerH - height) / 2;
+      offsetY = (containerH * 0.6 - height) / 2; // Adjust offset for 60% height
     } else {
       // 이미지가 더 높음
-      height = containerH;
-      width = containerH * imageRatio;
+      height = containerH * 0.6; // Set height to 60% of container
+      width = height * imageRatio;
       offsetX = (containerW - width) / 2;
     }
     return { width, height, offsetX, offsetY };
@@ -113,6 +91,7 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrResult, isLoading
 
   const stopPropagation = (e: any) => {
     e.stopPropagation();
+    Keyboard.dismiss();
   };
 
   // 검색어와 일치하는 OCR 결과만 필터링 (대소문자 무시)
@@ -172,7 +151,13 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrResult, isLoading
                   );
                   return (
                     <Svg
-                      style={{ position: 'absolute', left: contained.offsetX, top: contained.offsetY }}
+                      style={{ 
+                        position: 'absolute', 
+                        left: contained.offsetX, 
+                        top: contained.offsetY,
+                        width: '100%',
+                        height: '60%'
+                      }}
                       width={contained.width}
                       height={contained.height}
                     >
@@ -237,23 +222,6 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrResult, isLoading
                 })()
               )}
             </View>
-          </View>
-        )}
-
-        {isLoadingOcr && (
-          <View style={styles.loadingOverlay}>
-            <Animated.View
-              style={{
-                transform: [{ rotate: spin }],
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                borderWidth: 3,
-                borderColor: '#fff',
-                borderTopColor: 'transparent',
-              }}
-            />
-            <Text style={[styles.loadingText, { marginTop: 15 }]}>텍스트 인식 중...</Text>
           </View>
         )}
       </View>
