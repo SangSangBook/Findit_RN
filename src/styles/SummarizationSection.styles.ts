@@ -24,19 +24,4 @@ export const summarizationSectionStyles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#eeeeee',
   },
-  resultContainer: {
-    maxHeight: 192,
-    marginTop: 16,
-    padding: 10,
-    backgroundColor: '#f3f4f6',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-  },
-  resultText: {
-    fontFamily: 'GmarketSansMedium',
-    fontSize: 14,
-    color: '#1f2937',
-    lineHeight: 18,
-  },
 }); 

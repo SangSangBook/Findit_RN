@@ -49,7 +49,7 @@ export const homeScreenStyles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: 12,
+    borderRadius: 16,
     width: '48%',
     shadowColor: '#000',
     shadowOffset: {
@@ -93,11 +93,12 @@ export const homeScreenStyles = StyleSheet.create({
     elevation: 3,
     position: 'relative',
     marginRight: 10,
+    width: 120,
   },
   imageThumbnail: {
-    width: '100%', 
-    height: 150, 
-    borderRadius: 12,
+    width: 120,
+    height: 120,
+    borderRadius: 16,
     backgroundColor: '#e0e0e0',
   },
   loadingOverlayThumb: {
@@ -109,7 +110,7 @@ export const homeScreenStyles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.3)',
-    borderRadius: 12,
+    borderRadius: 16,
   },
   summarySection: {
     flex: 1,
@@ -121,7 +122,7 @@ export const homeScreenStyles = StyleSheet.create({
   },
   imageUploadButton: {
     paddingVertical: 82,
-    borderRadius: 12,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#F5F5F5',
@@ -138,7 +139,7 @@ export const homeScreenStyles = StyleSheet.create({
   },
   getInfoButton: {
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#46B876',
@@ -162,7 +163,7 @@ export const homeScreenStyles = StyleSheet.create({
     flex: 1,
     paddingVertical: 20,
     paddingHorizontal: 10,
-    borderRadius: 12,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 8,
@@ -177,7 +178,7 @@ export const homeScreenStyles = StyleSheet.create({
     textAlign: 'center',
   },
   imageTouchable: {
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
   },
   modalOverlay: {
@@ -189,14 +190,14 @@ export const homeScreenStyles = StyleSheet.create({
   previewImage: {
     width: '90%',
     height: '70%',
-    borderRadius: 12,
+    borderRadius: 16,
   },
   deleteButton: {
     position: 'absolute',
     top: 5,
     right: 5,
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 5,
     zIndex: 10,
   },
@@ -215,7 +216,7 @@ export const homeScreenStyles = StyleSheet.create({
   mediaPreviewContainer: {
     marginTop: 24,
     marginHorizontal: 36,
-    borderRadius: 12,
+    borderRadius: 16,
     backgroundColor: '#F5F5F5',
     padding: 16,
   },
@@ -224,7 +225,7 @@ export const homeScreenStyles = StyleSheet.create({
   },
   mediaPreviewWrapper: {
     marginRight: 10,
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
     width: 120,
     height: 120,
@@ -232,13 +233,13 @@ export const homeScreenStyles = StyleSheet.create({
   mediaPreviewTouchable: {
     width: '100%',
     height: '100%',
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
   },
   mediaPreviewImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 12,
+    borderRadius: 16,
   },
   addMoreMediaButton: {
     flexDirection: 'row',
@@ -254,22 +255,28 @@ export const homeScreenStyles = StyleSheet.create({
     marginLeft: 5,
   },
   // 정보 결과 관련 스타일
+  infoContainerTitle: {
+    fontFamily: 'PretendardSemiBold',
+    fontSize: 16,
+    color: '#222222',
+    marginHorizontal: 36,
+    marginTop: 33,
+  },
   infoResultContainer: {
     marginTop: 20,
     marginHorizontal: 36,
+    marginBottom: 30,
     padding: 15,
-    backgroundColor: '#f3f4f6',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#d1d5db',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 16,
   },
   infoResultScrollView: {
     maxHeight: 300,
   },
   infoResultText: {
-    fontFamily: 'GmarketSansMedium',
+    fontFamily: 'PretendardMedium',
     fontSize: 14,
-    color: '#1f2937',
+    color: '#3d3d3d',
     lineHeight: 20,
   },
   // 로딩 애니메이션 스타일
@@ -289,16 +296,14 @@ export const homeScreenStyles = StyleSheet.create({
     marginTop: 20,
     marginHorizontal: 36,
     padding: 15,
-    backgroundColor: '#f3f4f6',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#d1d5db',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 16,
   },
   answerLoadingBar: {
     height: 16,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: '#CACACA',
     borderRadius: 4,
-    marginBottom: 12,
+    marginBottom: 16,
   },
   answerLoadingBarShort: {
     width: '60%',

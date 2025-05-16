@@ -519,7 +519,7 @@ export default function HomeScreen() {
           <Text style={styles.subtitle}>
             미디어에서{'\n'}
             정보를{'\n'}
-            찾아보세요{'\n'}
+            찾아보세요<Text style={{ color: '#46B876' }}>.</Text>{'\n'}
           </Text>
         </View>
       </BlurView>
@@ -532,7 +532,6 @@ export default function HomeScreen() {
         
         {selectedImages.length > 0 && (
           <View style={styles.imagesSection}>
-            <Text style={styles.sectionTitle}>선택된 미디어</Text>
             <ScrollView 
               horizontal 
               showsHorizontalScrollIndicator={false}
@@ -550,7 +549,11 @@ export default function HomeScreen() {
                       onPress={() => handleMediaPreview(media)}
                       style={styles.imageTouchable}
                     >
-                      <Image source={{ uri: media.uri }} style={styles.imageThumbnail} />
+                      <Image 
+                        source={{ uri: media.uri }} 
+                        style={styles.imageThumbnail}
+                        resizeMode="cover"
+                      />
                       {isLoadingOcr[media.uri] && (
                         <View style={styles.loadingOverlayThumb}>
                           <ActivityIndicator size="small" color="#fff" />
@@ -558,17 +561,19 @@ export default function HomeScreen() {
                       )}
                     </TouchableOpacity>
                   )}
-                  <ImageTypeSelector 
-                    uri={media.uri} 
-                    currentType={imageTypes[media.uri] || 'OTHER'} 
-                    onTypeChange={handleTypeChange} 
-                  />
                   <TouchableOpacity
                     style={styles.deleteButton}
                     onPress={() => removeImage(media.uri)}
                   >
                     <MaterialIcons name="close" size={20} color="#fff" />
                   </TouchableOpacity>
+                  <View style={{ marginTop: 12 }}>
+                    <ImageTypeSelector 
+                      uri={media.uri} 
+                      currentType={imageTypes[media.uri] || 'OTHER'} 
+                      onTypeChange={handleTypeChange} 
+                    />
+                  </View>
                 </View>
               ))}
             </ScrollView>
@@ -609,10 +614,13 @@ export default function HomeScreen() {
         {isFetchingInfo ? (
           <AnswerLoadingSkeleton />
         ) : infoResult && (
-          <View style={styles.infoResultContainer}>
-            <ScrollView style={styles.infoResultScrollView}>
-              <Text style={styles.infoResultText}>{infoResult}</Text>
-            </ScrollView>
+          <View>
+            <Text style={styles.infoContainerTitle}>이미지 분석 결과</Text>
+            <View style={styles.infoResultContainer}>
+              <ScrollView style={styles.infoResultScrollView}>
+                <Text style={styles.infoResultText}>{infoResult}</Text>
+              </ScrollView>
+            </View>
           </View>
         )}
       </View>

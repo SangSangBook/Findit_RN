@@ -59,18 +59,13 @@ const ImageTypeSelector: React.FC<ImageTypeSelectorProps> = ({ uri, currentType,
         onPress={() => !disabled && setModalVisible(true)}
         disabled={disabled}
       >
+        <View style={[styles.iconCircle, { backgroundColor: IMAGE_TYPE_COLORS[selectedType] || '#ccc', marginRight: 7.5 }]}>
+        </View>
         <Text style={[styles.selectedTypeText, { color: IMAGE_TYPE_COLORS[selectedType] || '#000' }]}>
           {IMAGE_TYPE_NAMES[selectedType]}
         </Text>
-        <MaterialIcons name="arrow-drop-down" size={24} color={IMAGE_TYPE_COLORS[selectedType] || '#000'} />
+        <MaterialIcons name="keyboard-arrow-down" size={24} color={IMAGE_TYPE_COLORS[selectedType] || '#000'} />
       </TouchableOpacity>
-      <View style={[styles.iconCircle, { backgroundColor: IMAGE_TYPE_COLORS[selectedType] || '#ccc' }]}>
-        <MaterialIcons
-          name={IMAGE_TYPE_ICONS[selectedType] as keyof typeof MaterialIcons.glyphMap}
-          size={18}
-          color="white"
-        />
-      </View>
 
       <Modal
         isVisible={modalVisible}

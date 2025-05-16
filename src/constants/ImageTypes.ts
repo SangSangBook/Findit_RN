@@ -58,7 +58,7 @@ export const IMAGE_TYPE_NAMES: Record<ImageType, string> = {
   CONTRACT: '계약서',
   PAYMENT: '정산/지출',
   DOCUMENT: '논문/문서',
-  PRODUCT: '제품 설명서',
+  PRODUCT: '설명서',
   OTHER: '기타'
 };
 
