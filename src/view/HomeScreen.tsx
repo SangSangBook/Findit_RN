@@ -9,15 +9,14 @@ import {
   ActionSheetIOS,
   Alert,
   Animated,
+  Appearance,
   Image,
   Platform,
   ScrollView,
   Text,
   TouchableOpacity,
-  View,
-  useColorScheme
+  View
 } from 'react-native';
-import { withTiming } from 'react-native-reanimated';
 import type { OcrResult } from '../api/googleVisionApi';
 import { ocrWithGoogleVision } from '../api/googleVisionApi';
 import { getInfoFromTextWithOpenAI } from '../api/openaiApi';
@@ -62,12 +61,12 @@ const LoadingWave = () => {
             toValue: 1,
             duration: 400,
             delay: index * 100,
-            useNativeDriver: true,
+            useNativeDriver: false,
           }),
           Animated.timing(anim, {
             toValue: 0,
             duration: 400,
-            useNativeDriver: true,
+            useNativeDriver: false,
           }),
         ]);
       });
@@ -119,12 +118,12 @@ const AnswerLoadingSkeleton = () => {
             toValue: 1,
             duration: 1000,
             delay: index * 200,
-            useNativeDriver: true,
+            useNativeDriver: false,
           }),
           Animated.timing(anim, {
             toValue: 0,
             duration: 1000,
-            useNativeDriver: true,
+            useNativeDriver: false,
           }),
         ]);
       });
@@ -175,12 +174,12 @@ const OcrLoadingAnimation = () => {
             toValue: 1,
             duration: 400,
             delay: index * 100,
-            useNativeDriver: true,
+            useNativeDriver: false,
           }),
           Animated.timing(anim, {
             toValue: 0,
             duration: 400,
-            useNativeDriver: true,
+            useNativeDriver: false,
           }),
         ]);
       });
@@ -217,7 +216,16 @@ const OcrLoadingAnimation = () => {
 };
 
 export default function HomeScreen() {
-  const colorScheme = useColorScheme();
+  const [colorScheme, setColorScheme] = useState(Appearance.getColorScheme());
+  
+  useEffect(() => {
+    const subscription = Appearance.addChangeListener(({ colorScheme }) => {
+      setColorScheme(colorScheme);
+    });
+
+    return () => subscription.remove();
+  }, []);
+
   const [selectedImages, setSelectedImages] = useState<ImagePickerAsset[]>([]);
   const [infoResult, setInfoResult] = useState<string | null>(null);
   const [ocrResults, setOcrResults] = useState<{[uri: string]: OcrResult | null}>({});
@@ -535,7 +543,7 @@ export default function HomeScreen() {
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 500,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }).start();
 
       console.log('Sending to OpenAI:', finalText);
@@ -551,7 +559,7 @@ export default function HomeScreen() {
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 300,
-      useNativeDriver: true,
+      useNativeDriver: false,
     }).start();
   };
 
@@ -559,7 +567,7 @@ export default function HomeScreen() {
     Animated.timing(fadeAnim, {
       toValue: 0,
       duration: 300,
-      useNativeDriver: true,
+      useNativeDriver: false,
     }).start(() => setPreviewMediaAsset(null));
   };
 
@@ -579,7 +587,11 @@ export default function HomeScreen() {
   useEffect(() => {
     if (infoResult) {
       fadeAnim.setValue(0);
-      fadeAnim.setValue(withTiming(1, { duration: 300 }));
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: false,
+      }).start();
     }
   }, [infoResult]);
 

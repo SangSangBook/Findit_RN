@@ -1,7 +1,7 @@
 import { ResizeMode, Video } from 'expo-av';
 import { ImagePickerAsset } from 'expo-image-picker';
-import React, { useRef, useState } from 'react';
-import { ActivityIndicator, Image, Text, TouchableWithoutFeedback, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Image, Text, TouchableWithoutFeedback, View } from 'react-native';
 import Svg, { Rect, Text as SvgText } from 'react-native-svg';
 import type { OcrResult, OcrTextBox } from '../api/googleVisionApi';
 import { imagePreviewStyles as styles } from '../styles/ImagePreview.styles';
@@ -23,6 +23,28 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrResult, isLoading
   const [imageLayout, setImageLayout] = useState<ImageLayout | null>(null);
   const [containerLayout, setContainerLayout] = useState<ImageLayout | null>(null);
   const [imageNaturalSize, setImageNaturalSize] = useState<{ width: number; height: number } | null>(null);
+  
+  // 로딩 애니메이션을 위한 Animated 값
+  const rotateAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (isLoadingOcr) {
+      Animated.loop(
+        Animated.timing(rotateAnim, {
+          toValue: 1,
+          duration: 2000,
+          useNativeDriver: false,
+        })
+      ).start();
+    } else {
+      rotateAnim.setValue(0);
+    }
+  }, [isLoadingOcr]);
+
+  const spin = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg']
+  });
 
   // 원본 이미지 크기 가져오기 (Image.getSize)
   React.useEffect(() => {
@@ -233,8 +255,18 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrResult, isLoading
 
         {isLoadingOcr && (
           <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color="#fff" />
-            <Text style={styles.loadingText}>텍스트 인식 중...</Text>
+            <Animated.View
+              style={{
+                transform: [{ rotate: spin }],
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                borderWidth: 3,
+                borderColor: '#fff',
+                borderTopColor: 'transparent',
+              }}
+            />
+            <Text style={[styles.loadingText, { marginTop: 15 }]}>텍스트 인식 중...</Text>
           </View>
         )}
       </View>
