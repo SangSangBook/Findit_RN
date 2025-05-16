@@ -141,19 +141,22 @@ export const homeScreenStyles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#4299e1', // 파란색 버튼으로 변경
+    backgroundColor: '#46B876',
     marginTop: 16,
     marginHorizontal: 36,
   },
   getInfoButtonText: {
     fontFamily: 'PretendardMedium',
-    color: '#FFFFFF', // 흰색 텍스트로 변경
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
   },
   getInfoButtonDisabled: {
-    backgroundColor: '#a0aec0', // 비활성화 시 회색으로 변경
+    backgroundColor: '#EFEFEF',
+  },
+  getInfoButtonTextDisabled: {
+    color: '#888888',
   },
   videoUploadButton: {
     flex: 1,
@@ -280,5 +283,30 @@ export const homeScreenStyles = StyleSheet.create({
     height: 20,
     backgroundColor: '#FFFFFF',
     marginHorizontal: 2,
+  },
+  // 답변 로딩 스타일
+  answerLoadingContainer: {
+    marginTop: 20,
+    marginHorizontal: 36,
+    padding: 15,
+    backgroundColor: '#f3f4f6',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+  },
+  answerLoadingBar: {
+    height: 16,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 4,
+    marginBottom: 12,
+  },
+  answerLoadingBarShort: {
+    width: '60%',
+  },
+  answerLoadingBarMedium: {
+    width: '80%',
+  },
+  answerLoadingBarLong: {
+    width: '90%',
   },
 });

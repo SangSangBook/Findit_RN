@@ -104,6 +104,62 @@ const LoadingWave = () => {
   );
 };
 
+const AnswerLoadingSkeleton = () => {
+  const [animations] = useState([
+    new Animated.Value(0),
+    new Animated.Value(0),
+    new Animated.Value(0),
+    new Animated.Value(0),
+  ]);
+
+  useEffect(() => {
+    const animate = () => {
+      const sequences = animations.map((anim, index) => {
+        return Animated.sequence([
+          Animated.timing(anim, {
+            toValue: 1,
+            duration: 1000,
+            delay: index * 200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(anim, {
+            toValue: 0,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ]);
+      });
+
+      Animated.stagger(200, sequences).start(() => animate());
+    };
+
+    animate();
+  }, []);
+
+  return (
+    <View style={styles.answerLoadingContainer}>
+      {animations.map((anim, index) => (
+        <Animated.View
+          key={index}
+          style={[
+            styles.answerLoadingBar,
+            index === 0 && styles.answerLoadingBarLong,
+            index === 1 && styles.answerLoadingBarMedium,
+            index === 2 && styles.answerLoadingBarShort,
+            index === 3 && styles.answerLoadingBarMedium,
+            {
+              opacity: anim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.3, 0.7],
+              }),
+            },
+          ]}
+        />
+      ))}
+    </View>
+  );
+};
+
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
   const [selectedImages, setSelectedImages] = useState<ImagePickerAsset[]>([]);
@@ -530,21 +586,29 @@ export default function HomeScreen() {
         )}
 
         <TouchableOpacity 
-          style={[styles.getInfoButton, isFetchingInfo && styles.getInfoButtonDisabled]} 
+          style={[
+            styles.getInfoButton, 
+            !questionText.trim() && styles.getInfoButtonDisabled
+          ]} 
           onPress={handleGetInfo}
-          disabled={isFetchingInfo}
+          disabled={!questionText.trim() || isFetchingInfo}
         >
           {isFetchingInfo ? (
             <LoadingWave />
           ) : (
-            <Text style={styles.getInfoButtonText}>
-              질문하기
+            <Text style={[
+              styles.getInfoButtonText,
+              !questionText.trim() && styles.getInfoButtonTextDisabled
+            ]}>
+              이미지 정보 가져오기
             </Text>
           )}
         </TouchableOpacity>
 
         {/* 답변 표시 영역 */}
-        {infoResult && (
+        {isFetchingInfo ? (
+          <AnswerLoadingSkeleton />
+        ) : infoResult && (
           <View style={styles.infoResultContainer}>
             <ScrollView style={styles.infoResultScrollView}>
               <Text style={styles.infoResultText}>{infoResult}</Text>
