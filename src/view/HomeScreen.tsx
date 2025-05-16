@@ -4,8 +4,21 @@ import { BlurView } from 'expo-blur';
 import * as ImageManipulator from 'expo-image-manipulator';
 import type { ImagePickerAsset } from 'expo-image-picker';
 import * as ImagePicker from 'expo-image-picker';
-import { useEffect, useRef, useState } from 'react';
-import { ActionSheetIOS, ActivityIndicator, Alert, Animated, Image, Platform, ScrollView, Text, TouchableOpacity, View, useColorScheme } from 'react-native';
+import { useEffect, useState } from 'react';
+import {
+  ActionSheetIOS,
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Image,
+  Platform,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+  useColorScheme
+} from 'react-native';
+import { withTiming } from 'react-native-reanimated';
 import type { OcrResult } from '../api/googleVisionApi';
 import { ocrWithGoogleVision } from '../api/googleVisionApi';
 import { getInfoFromTextWithOpenAI } from '../api/openaiApi';
@@ -38,7 +51,7 @@ export default function HomeScreen() {
   const colorScheme = useColorScheme();
   const [selectedImages, setSelectedImages] = useState<ImagePickerAsset[]>([]);
   const [infoResult, setInfoResult] = useState<string | null>(null);
-const [ocrResults, setOcrResults] = useState<{[uri: string]: OcrResult | null}>({});
+  const [ocrResults, setOcrResults] = useState<{[uri: string]: OcrResult | null}>({});
   const [isLoadingOcr, setIsLoadingOcr] = useState<OcrLoadingState>({});
   const [questionText, setQuestionText] = useState<string>('');
   const [previewMediaAsset, setPreviewMediaAsset] = useState<ImagePickerAsset | null>(null);
@@ -46,7 +59,7 @@ const [ocrResults, setOcrResults] = useState<{[uri: string]: OcrResult | null}>(
   const [cameraPermissionStatus, setCameraPermissionStatus] = useState<ImagePicker.PermissionStatus | null>(null);
   const [assetUriMap, setAssetUriMap] = useState<{ [internalUri: string]: string | undefined }>({});
   const [imageTypes, setImageTypes] = useState<ImageTypeState>({});
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [fadeAnim] = useState(new Animated.Value(0));
 
   const handleTypeChange = (uri: string, newType: ImageType) => {
     setImageTypes(prev => ({ ...prev, [uri]: newType }));
@@ -310,13 +323,20 @@ const [ocrResults, setOcrResults] = useState<{[uri: string]: OcrResult | null}>(
         }
       });
 
-      // 사용자 질문 추가
-      if (questionText.trim()) {
-        questionPrompt += `질문: ${questionText.trim()}`;
-      }
-
       // 최종 텍스트 구성
-      const finalText = allText + (questionPrompt ? '\n\n' + questionPrompt : '');
+      let finalText = allText;
+
+      // 사용자 질문이 있는 경우
+      if (questionText.trim()) {
+        // 단순한 질문인 경우 (예: "무슨 사진이야?", "이게 뭐야?" 등)
+        const simpleQuestions = ["무슨 사진이야?", "이게 뭐야?", "뭐야 이건?", "이건 뭐야?", "이 사진은 뭐야?"];
+        if (simpleQuestions.includes(questionText.trim())) {
+          finalText = `다음 이미지에서 추출한 텍스트입니다. 이 이미지가 어떤 종류의 문서/사진인지 간단히 설명해주세요:\n\n${allText}`;
+        } else {
+          // 일반적인 질문의 경우 기존 프롬프트 사용
+          finalText = allText + '\n\n' + questionPrompt + `질문: ${questionText.trim()}`;
+        }
+      }
 
       // OpenAI API 호출
       const information = await getInfoFromTextWithOpenAI(finalText);
@@ -367,10 +387,12 @@ const [ocrResults, setOcrResults] = useState<{[uri: string]: OcrResult | null}>(
     openPreview(media);
   };
 
-  // 이미지 유형 변경 핸들러는 ImageTypeSelector.tsx에서 가져온 onTypeChange 프롭으로 대체됩니다.
-  // const handleImageTypeChange = (uri: string, type: ImageType) => {
-  //   setImageTypes(prev => ({ ...prev, [uri]: type }));
-  // };
+  useEffect(() => {
+    if (infoResult) {
+      fadeAnim.setValue(0);
+      fadeAnim.setValue(withTiming(1, { duration: 300 }));
+    }
+  }, [infoResult]);
 
   return (
     <ScrollView
@@ -379,7 +401,6 @@ const [ocrResults, setOcrResults] = useState<{[uri: string]: OcrResult | null}>(
       keyboardShouldPersistTaps="handled"
     >
       <BlurView intensity={20} style={styles.header}>
-        {/* <Image style={styles.logo} source={require('../../assets/images/logoBlue.png')} /> */}
         <View style={styles.headerTextContainer}>
           <Text style={styles.title}>Findit!</Text>
           <Text style={styles.subtitle}>
@@ -394,9 +415,9 @@ const [ocrResults, setOcrResults] = useState<{[uri: string]: OcrResult | null}>(
         <SummarizationSection
           questionText={questionText}
           setQuestionText={setQuestionText}
-          handleGetInfo={handleGetInfo}
           infoResult={infoResult}
           isFetchingInfo={isFetchingInfo}
+          handleGetInfo={handleGetInfo}
         />
         
         {selectedImages.length > 0 && (
@@ -407,7 +428,7 @@ const [ocrResults, setOcrResults] = useState<{[uri: string]: OcrResult | null}>(
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.imagesScrollContainer}
             >
-              {selectedImages.map((media, index) => (
+              {selectedImages.map((media) => (
                 <View key={media.assetId || media.uri} style={styles.imageWrapper}>
                   {media.type === 'video' ? (
                     <VideoPreview
@@ -444,46 +465,41 @@ const [ocrResults, setOcrResults] = useState<{[uri: string]: OcrResult | null}>(
           </View>
         )}
         
-        <TouchableOpacity
-          style={styles.imageUploadButton}
-          onPress={showMediaOptions}
+        {selectedImages.length === 0 && (
+          <TouchableOpacity
+            style={styles.imageUploadButton}
+            onPress={showMediaOptions}
+          >
+            <MaterialIcons name="add" size={48} color="#8e8e8e" />
+            <Text style={styles.imageUploadButtonText}>미디어 업로드</Text>
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity 
+          style={[styles.getInfoButton, isFetchingInfo && styles.getInfoButtonDisabled]} 
+          onPress={handleGetInfo}
+          disabled={isFetchingInfo}
         >
-          <MaterialIcons name="add" size={48} color="#8e8e8e" />
-          <Text style={styles.imageUploadButtonText}>미디어 업로드</Text>
+          <Text style={styles.getInfoButtonText}>
+            {isFetchingInfo ? "답변을 생성하는 중..." : "질문하기"}
+          </Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.getInfoButton} onPress={handleGetInfo}>
-          <Text style={styles.getInfoButtonText}>미디어 정보 가져오기</Text>
-        </TouchableOpacity>
-        
+
+        {/* 답변 표시 영역을 '질문하기' 버튼 아래로 이동 */}
         {infoResult && (
-          <View style={styles.infoResultContainer}>
+          <Animated.View 
+            style={[
+              styles.infoResultContainer,
+              { opacity: fadeAnim }
+            ]}
+          >
             <ScrollView style={styles.infoResultScrollView}>
               <Text style={styles.infoResultText}>{infoResult}</Text>
             </ScrollView>
-          </View>
+          </Animated.View>
         )}
       </View>
 
-      {/* <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.uploadButton]}
-          onPress={handleChooseMedia}
-        >
-          <MaterialIcons name="photo-library" size={24} color="#fff" />
-          <Text style={styles.buttonText}>미디어 업로드</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.actionButton, styles.cameraButton]}
-          onPress={handleTakePhoto}
-        >
-          <MaterialIcons name="camera-alt" size={24} color="#fff" />
-          <Text style={styles.buttonText}>사진 촬영</Text>
-        </TouchableOpacity>
-      </View> */}
-
-      {/* 미디어 상세 보기 모달 (이전에 분리한 컴포넌트) */}
       <MediaPreviewModal
         visible={!!previewMediaAsset}
         onClose={closePreview}

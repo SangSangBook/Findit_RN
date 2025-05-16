@@ -1,14 +1,14 @@
 // /Users/kkm/Findit_RN/Findit/src/components/SummarizationSection.tsx
 import React from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, TextInput, View } from 'react-native';
 import { summarizationSectionStyles as styles } from '../styles/SummarizationSection.styles';
 
 interface SummarizationSectionProps {
   questionText: string;
   setQuestionText: (text: string) => void;
-  infoResult: string | null;
-  isFetchingInfo: boolean;
-  handleGetInfo: () => void;
+  infoResult?: string | null;
+  isFetchingInfo?: boolean;
+  handleGetInfo?: () => void;
 }
 
 const SummarizationSection: React.FC<SummarizationSectionProps> = ({
@@ -31,16 +31,11 @@ const SummarizationSection: React.FC<SummarizationSectionProps> = ({
         scrollEnabled={true}
         textAlignVertical="top"
       />
-      {/* <Button
-        title={isFetchingInfo ? "정보 가져오는 중..." : "정보 가져오기"}
-        onPress={handleGetInfo}
-        isLoading={isFetchingInfo}
-      />
       {infoResult && (
         <ScrollView style={styles.resultContainer}>
           <Text style={styles.resultText}>{infoResult}</Text>
         </ScrollView>
-      )} */}
+      )}
     </View>
   );
 };

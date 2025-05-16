@@ -1,11 +1,11 @@
 // /Users/kkm/Findit_RN/Findit/src/components/Button.tsx
 import React from 'react';
-import { TouchableOpacity, Text, ActivityIndicator, ViewStyle, TextStyle } from 'react-native';
+import { ActivityIndicator, Text, TextStyle, TouchableOpacity, ViewStyle } from 'react-native';
 import { buttonStyles as styles } from '../styles/Button.styles';
 
 interface ButtonProps {
   title: string;
-  onPress: () => void;
+  onPress?: () => void;
   isLoading?: boolean;
   disabled?: boolean;
   style?: ViewStyle;
@@ -17,7 +17,7 @@ const Button: React.FC<ButtonProps> = ({ title, onPress, isLoading = false, disa
     <TouchableOpacity
       style={[styles.button, style, (disabled || isLoading) && styles.disabledButton]}
       onPress={onPress}
-      disabled={disabled || isLoading}
+      disabled={disabled || isLoading || !onPress}
     >
       {isLoading ? (
         <ActivityIndicator size="small" color="#fff" />

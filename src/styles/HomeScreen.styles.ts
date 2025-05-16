@@ -141,17 +141,19 @@ export const homeScreenStyles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F5F5F5',
-    marginTop: 36,
+    backgroundColor: '#4299e1', // 파란색 버튼으로 변경
+    marginTop: 16,
     marginHorizontal: 36,
   },
   getInfoButtonText: {
     fontFamily: 'PretendardMedium',
-    color: '#8E8E8E',
-    fontSize: 14,
+    color: '#FFFFFF', // 흰색 텍스트로 변경
+    fontSize: 16,
     fontWeight: '600',
-    marginTop: 8,
     textAlign: 'center',
+  },
+  getInfoButtonDisabled: {
+    backgroundColor: '#a0aec0', // 비활성화 시 회색으로 변경
   },
   videoUploadButton: {
     flex: 1,
@@ -251,19 +253,25 @@ export const homeScreenStyles = StyleSheet.create({
   // 정보 결과 관련 스타일
   infoResultContainer: {
     marginTop: 20,
-    marginHorizontal: 36,
-    borderRadius: 12,
-    backgroundColor: '#F8F9FA',
-    padding: 16,
-    maxHeight: 200,
+    marginHorizontal: 20,
+    padding: 15,
+    backgroundColor: '#ffffff',
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   infoResultScrollView: {
-    flex: 1,
+    maxHeight: 300,
   },
   infoResultText: {
-    fontFamily: 'PretendardRegular',
-    fontSize: 14,
+    fontSize: 16,
+    lineHeight: 24,
     color: '#333333',
-    lineHeight: 20,
   },
 });
