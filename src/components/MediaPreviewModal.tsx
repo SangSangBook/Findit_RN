@@ -136,7 +136,28 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
             <Text style={[styles.previewTitle, styles.previewTitleDot]}> .</Text>
           </View>
 
-          <View style={styles.textFieldWrapper}>
+          <View style={{ flex: 1 }}>
+            <ImagePreview
+              image={mediaAsset}
+              ocrResult={ocrResult}
+              isLoadingOcr={isLoadingOcr}
+              searchTerm={searchTerm}
+            />
+          </View>
+
+          <Animated.View
+            style={[
+              styles.textFieldWrapper,
+              {
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                bottom: Platform.OS === 'ios' ? Math.max(0, keyboardHeight - 19) : keyboardHeight + 5,
+                zIndex: 1000,
+                backgroundColor: styles.textFieldWrapper.backgroundColor,
+              }
+            ]}
+          >
             <View style={styles.textFieldContainerRow}>
               <TextInput
                 style={styles.textInput}
@@ -172,16 +193,7 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
                 marginTop: 2
               }}
             />
-          </View>
-
-          <View style={{ flex: 1 }}>
-            <ImagePreview
-              image={mediaAsset}
-              ocrResult={ocrResult}
-              isLoadingOcr={isLoadingOcr}
-              searchTerm={searchTerm}
-            />
-          </View>
+          </Animated.View>
         </View>
       </View>
     </Modal>
