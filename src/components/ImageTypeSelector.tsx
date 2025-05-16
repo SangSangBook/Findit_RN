@@ -5,6 +5,62 @@ import Modal from 'react-native-modal';
 import { IMAGE_TYPE_COLORS, IMAGE_TYPE_NAMES, ImageType } from '../constants/ImageTypes';
 import { styles } from '../styles/ImageTypeSelector.styles'; // Import styles
 
+const OcrLoadingAnimation = () => {
+  const [animations] = useState([
+    new Animated.Value(0),
+    new Animated.Value(0),
+    new Animated.Value(0),
+  ]);
+
+  useEffect(() => {
+    const animate = () => {
+      const sequences = animations.map((anim, index) => {
+        return Animated.sequence([
+          Animated.timing(anim, {
+            toValue: 1,
+            duration: 600,
+            delay: index * 200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(anim, {
+            toValue: 0,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+        ]);
+      });
+
+      Animated.stagger(200, sequences).start(() => animate());
+    };
+
+    animate();
+  }, []);
+
+  return (
+    <View style={styles.ocrLoadingContainer}>
+      {animations.map((anim, index) => (
+        <Animated.View
+          key={index}
+          style={[
+            styles.ocrLoadingDot,
+            {
+              opacity: anim,
+              transform: [
+                {
+                  scale: anim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.5, 1],
+                  }),
+                },
+              ],
+            },
+          ]}
+        />
+      ))}
+    </View>
+  );
+};
+
 interface ImageTypeSelectorProps {
   uri: string;
   currentType: ImageType;
