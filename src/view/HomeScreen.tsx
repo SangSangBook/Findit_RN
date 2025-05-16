@@ -399,17 +399,65 @@ const [ocrResults, setOcrResults] = useState<{[uri: string]: OcrResult | null}>(
           isFetchingInfo={isFetchingInfo}
         />
         
-        <TouchableOpacity
-          style={styles.imageUploadButton}
-          onPress={showMediaOptions}
-        >
-          <MaterialIcons name="add" size={48} color="#8e8e8e" />
-          <Text style={styles.imageUploadButtonText}>미디어 업로드</Text>
-        </TouchableOpacity>
+        {selectedImages.length === 0 ? (
+          <TouchableOpacity
+            style={styles.imageUploadButton}
+            onPress={showMediaOptions}
+          >
+            <MaterialIcons name="add" size={48} color="#8e8e8e" />
+            <Text style={styles.imageUploadButtonText}>미디어 업로드</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.mediaPreviewContainer}>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.mediaPreviewScrollContainer}
+            >
+              {selectedImages.map((media, index) => (
+                <View key={media.assetId || media.uri} style={styles.mediaPreviewWrapper}>
+                  {media.type === 'video' ? (
+                    <VideoPreview
+                      videoUri={media.uri}
+                      onPress={() => handleMediaPreview(media)}
+                    />
+                  ) : (
+                    <TouchableOpacity
+                      onPress={() => handleMediaPreview(media)}
+                      style={styles.mediaPreviewTouchable}
+                    >
+                      <Image source={{ uri: media.uri }} style={styles.mediaPreviewImage} />
+                      {isLoadingOcr[media.uri] && (
+                        <View style={styles.loadingOverlayThumb}>
+                          <ActivityIndicator size="small" color="#fff" />
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ))}
+            </ScrollView>
+            <TouchableOpacity 
+              style={styles.addMoreMediaButton}
+              onPress={showMediaOptions}
+            >
+              <MaterialIcons name="add-circle" size={24} color="#4299e1" />
+              <Text style={styles.addMoreMediaText}>더 추가</Text>
+            </TouchableOpacity>
+          </View>
+        )}
         
         <TouchableOpacity style={styles.getInfoButton} onPress={handleGetInfo}>
           <Text style={styles.getInfoButtonText}>미디어 정보 가져오기</Text>
         </TouchableOpacity>
+        
+        {infoResult && (
+          <View style={styles.infoResultContainer}>
+            <ScrollView style={styles.infoResultScrollView}>
+              <Text style={styles.infoResultText}>{infoResult}</Text>
+            </ScrollView>
+          </View>
+        )}
       </View>
 
       {/* <View style={styles.buttonContainer}>

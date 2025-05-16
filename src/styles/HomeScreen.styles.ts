@@ -206,4 +206,64 @@ export const homeScreenStyles = StyleSheet.create({
     justifyContent: 'flex-end',
     margin: 0,
   },
+  // 미디어 프리뷰 관련 스타일
+  mediaPreviewContainer: {
+    marginTop: 24,
+    marginHorizontal: 36,
+    borderRadius: 12,
+    backgroundColor: '#F5F5F5',
+    padding: 16,
+  },
+  mediaPreviewScrollContainer: {
+    paddingVertical: 10,
+  },
+  mediaPreviewWrapper: {
+    marginRight: 10,
+    borderRadius: 12,
+    overflow: 'hidden',
+    width: 120,
+    height: 120,
+  },
+  mediaPreviewTouchable: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  mediaPreviewImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 12,
+  },
+  addMoreMediaButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    marginTop: 10,
+  },
+  addMoreMediaText: {
+    fontFamily: 'PretendardMedium',
+    color: '#4299e1',
+    fontSize: 14,
+    marginLeft: 5,
+  },
+  // 정보 결과 관련 스타일
+  infoResultContainer: {
+    marginTop: 20,
+    marginHorizontal: 36,
+    borderRadius: 12,
+    backgroundColor: '#F8F9FA',
+    padding: 16,
+    maxHeight: 200,
+  },
+  infoResultScrollView: {
+    flex: 1,
+  },
+  infoResultText: {
+    fontFamily: 'PretendardRegular',
+    fontSize: 14,
+    color: '#333333',
+    lineHeight: 20,
+  },
 });
