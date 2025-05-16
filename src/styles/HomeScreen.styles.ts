@@ -143,7 +143,7 @@ export const homeScreenStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#46B876',
-    marginTop: 16,
+    marginTop: 36,
     marginHorizontal: 36,
   },
   getInfoButtonText: {
@@ -290,6 +290,7 @@ export const homeScreenStyles = StyleSheet.create({
     height: 20,
     backgroundColor: '#FFFFFF',
     marginHorizontal: 2,
+    borderRadius: 4,
   },
   // 답변 로딩 스타일
   answerLoadingContainer: {

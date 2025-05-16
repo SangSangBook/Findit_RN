@@ -1,8 +1,9 @@
-import { StyleSheet } from 'react-native';
+  import { Platform, StyleSheet } from 'react-native';
 
 export const styles = StyleSheet.create({
   container: {
     width: '100%',
+    paddingBottom: Platform.OS === 'android' ? 20 : 0,
   },
   selectorButton: {
     flexDirection: 'row',
@@ -80,5 +81,23 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     color: '#222222',
     flex: 1,
+  },
+  ocrLoadingContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  ocrLoadingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#fff',
   },
 });

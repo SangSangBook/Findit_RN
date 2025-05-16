@@ -1,7 +1,7 @@
 import { ResizeMode, Video } from 'expo-av';
 import { ImagePickerAsset } from 'expo-image-picker';
 import React, { useRef, useState } from 'react';
-import { ActivityIndicator, Image, Text, TouchableWithoutFeedback, View } from 'react-native';
+import { Image, Keyboard, TouchableWithoutFeedback, View } from 'react-native';
 import Svg, { Rect, Text as SvgText } from 'react-native-svg';
 import type { OcrResult, OcrTextBox } from '../api/googleVisionApi';
 import { imagePreviewStyles as styles } from '../styles/ImagePreview.styles';
@@ -23,7 +23,7 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrResult, isLoading
   const [imageLayout, setImageLayout] = useState<ImageLayout | null>(null);
   const [containerLayout, setContainerLayout] = useState<ImageLayout | null>(null);
   const [imageNaturalSize, setImageNaturalSize] = useState<{ width: number; height: number } | null>(null);
-
+  
   // 원본 이미지 크기 가져오기 (Image.getSize)
   React.useEffect(() => {
     if (image?.uri) {
@@ -56,21 +56,21 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrResult, isLoading
     imgW: number,
     imgH: number
   ) {
-    const containerRatio = containerW / containerH;
+    const containerRatio = containerW / (containerH * 0.6); // Adjust for 60% height
     const imageRatio = imgW / imgH;
     let width = containerW;
-    let height = containerH;
+    let height = containerH * 0.6; // Set height to 60% of container
     let offsetX = 0;
     let offsetY = 0;
     if (imageRatio > containerRatio) {
       // 이미지가 더 넓음
       width = containerW;
       height = containerW / imageRatio;
-      offsetY = (containerH - height) / 2;
+      offsetY = (containerH * 0.6 - height) / 2; // Adjust offset for 60% height
     } else {
       // 이미지가 더 높음
-      height = containerH;
-      width = containerH * imageRatio;
+      height = containerH * 0.6; // Set height to 60% of container
+      width = height * imageRatio;
       offsetX = (containerW - width) / 2;
     }
     return { width, height, offsetX, offsetY };
@@ -91,6 +91,7 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrResult, isLoading
 
   const stopPropagation = (e: any) => {
     e.stopPropagation();
+    Keyboard.dismiss();
   };
 
   // 검색어와 일치하는 OCR 결과만 필터링 (대소문자 무시)
@@ -150,7 +151,13 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrResult, isLoading
                   );
                   return (
                     <Svg
-                      style={{ position: 'absolute', left: contained.offsetX, top: contained.offsetY }}
+                      style={{ 
+                        position: 'absolute', 
+                        left: contained.offsetX, 
+                        top: contained.offsetY,
+                        width: '100%',
+                        height: '60%'
+                      }}
                       width={contained.width}
                       height={contained.height}
                     >
@@ -194,33 +201,20 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrResult, isLoading
                         const y2 = v[2].y * scaleY;
                         const boxWidth = Math.abs(x2 - x1);
                         const boxHeight = Math.abs(y2 - y1);
-                        const centerX = Math.min(x1, x2) + boxWidth / 2;
-                        const centerY = Math.min(y1, y2) + boxHeight / 2;
                         
                         return (
-                          <React.Fragment key={idx}>
-                            <Rect
-                              x={Math.min(x1, x2)}
-                              y={Math.min(y1, y2)}
-                              width={boxWidth}
-                              height={boxHeight}
-                              stroke="rgb(0, 255, 0)"
-                              strokeWidth={3}
-                              fill="rgba(0, 255, 0, 0.1)"
-                              rx={4}
-                              ry={4}
-                            />
-                            <SvgText
-                              x={centerX}
-                              y={Math.min(y1, y2) - 5}
-                              fontSize="12"
-                              fontWeight="bold"
-                              fill="rgb(0, 255, 0)"
-                              textAnchor="middle"
-                            >
-                              {item.description}
-                            </SvgText>
-                          </React.Fragment>
+                          <Rect
+                            key={idx}
+                            x={Math.min(x1, x2)}
+                            y={Math.min(y1, y2)}
+                            width={boxWidth}
+                            height={boxHeight}
+                            stroke="rgba(70, 230, 120, 0.8)"
+                            strokeWidth={2}
+                            fill="rgba(70, 230, 120, 0.4)"
+                            rx={4}
+                            ry={4}
+                          />
                         );
                       })}
                     </Svg>
@@ -228,13 +222,6 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrResult, isLoading
                 })()
               )}
             </View>
-          </View>
-        )}
-
-        {isLoadingOcr && (
-          <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color="#fff" />
-            <Text style={styles.loadingText}>텍스트 인식 중...</Text>
           </View>
         )}
       </View>

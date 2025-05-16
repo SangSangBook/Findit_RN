@@ -7,18 +7,16 @@ import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useState } from 'react';
 import {
   ActionSheetIOS,
-  ActivityIndicator,
   Alert,
   Animated,
+  Appearance,
   Image,
   Platform,
   ScrollView,
   Text,
   TouchableOpacity,
-  View,
-  useColorScheme
+  View
 } from 'react-native';
-import { withTiming } from 'react-native-reanimated';
 import type { OcrResult } from '../api/googleVisionApi';
 import { ocrWithGoogleVision } from '../api/googleVisionApi';
 import { getInfoFromTextWithOpenAI } from '../api/openaiApi';
@@ -63,12 +61,12 @@ const LoadingWave = () => {
             toValue: 1,
             duration: 400,
             delay: index * 100,
-            useNativeDriver: true,
+            useNativeDriver: false,
           }),
           Animated.timing(anim, {
             toValue: 0,
             duration: 400,
-            useNativeDriver: true,
+            useNativeDriver: false,
           }),
         ]);
       });
@@ -120,12 +118,12 @@ const AnswerLoadingSkeleton = () => {
             toValue: 1,
             duration: 1000,
             delay: index * 200,
-            useNativeDriver: true,
+            useNativeDriver: false,
           }),
           Animated.timing(anim, {
             toValue: 0,
             duration: 1000,
-            useNativeDriver: true,
+            useNativeDriver: false,
           }),
         ]);
       });
@@ -160,8 +158,74 @@ const AnswerLoadingSkeleton = () => {
   );
 };
 
+const OcrLoadingAnimation = () => {
+  const [animations] = useState([
+    new Animated.Value(0),
+    new Animated.Value(0),
+    new Animated.Value(0),
+    new Animated.Value(0),
+  ]);
+
+  useEffect(() => {
+    const animate = () => {
+      const sequences = animations.map((anim, index) => {
+        return Animated.sequence([
+          Animated.timing(anim, {
+            toValue: 1,
+            duration: 400,
+            delay: index * 100,
+            useNativeDriver: false,
+          }),
+          Animated.timing(anim, {
+            toValue: 0,
+            duration: 400,
+            useNativeDriver: false,
+          }),
+        ]);
+      });
+
+      Animated.stagger(100, sequences).start(() => animate());
+    };
+
+    animate();
+  }, []);
+
+  return (
+    <View style={styles.loadingOverlayThumb}>
+      {animations.map((anim, index) => (
+        <Animated.View
+          key={index}
+          style={[
+            styles.loadingBar,
+            {
+              opacity: anim,
+              transform: [
+                {
+                  scaleY: anim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.5, 1],
+                  }),
+                },
+              ],
+            },
+          ]}
+        />
+      ))}
+    </View>
+  );
+};
+
 export default function HomeScreen() {
-  const colorScheme = useColorScheme();
+  const [colorScheme, setColorScheme] = useState(Appearance.getColorScheme());
+  
+  useEffect(() => {
+    const subscription = Appearance.addChangeListener(({ colorScheme }) => {
+      setColorScheme(colorScheme);
+    });
+
+    return () => subscription.remove();
+  }, []);
+
   const [selectedImages, setSelectedImages] = useState<ImagePickerAsset[]>([]);
   const [infoResult, setInfoResult] = useState<string | null>(null);
   const [ocrResults, setOcrResults] = useState<{[uri: string]: OcrResult | null}>({});
@@ -215,14 +279,34 @@ export default function HomeScreen() {
         const combinedText = results
           .map(result => `[${result.time/1000}초] ${result.text}`)
           .join('\n\n');
-        // combinedText은 string이므로 타입 오류 발생. null로 대체하거나, OcrTextBox[]로 변환 필요
-      setOcrResults(prevResults => ({ ...prevResults, [videoUri]: null })); // 또는 적절한 OcrTextBox[] 데이터로 변경
+        
+        // OcrResult 형식에 맞게 변환
+        const ocrResult: OcrResult = {
+          fullText: combinedText,
+          textBoxes: results.map(result => ({
+            description: result.text,
+            boundingPoly: {
+              vertices: [
+                { x: 0, y: 0 },
+                { x: 0, y: 0 },
+                { x: 0, y: 0 },
+                { x: 0, y: 0 }
+              ]
+            }
+          }))
+        };
+
+        setOcrResults(prevResults => ({ ...prevResults, [videoUri]: ocrResult }));
+        const detectedType = detectImageType(combinedText);
+        setImageTypes(prev => ({ ...prev, [videoUri]: detectedType }));
       } else {
         setOcrResults(prevResults => ({ ...prevResults, [videoUri]: null }));
+        setImageTypes(prev => ({ ...prev, [videoUri]: 'OTHER' }));
       }
     } catch (error) {
       console.error(`비디오 OCR 오류 (${videoUri}):`, error);
       setOcrResults(prevResults => ({ ...prevResults, [videoUri]: null }));
+      setImageTypes(prev => ({ ...prev, [videoUri]: 'OTHER' }));
     } finally {
       setIsLoadingOcr(prev => ({ ...prev, [videoUri]: false }));
     }
@@ -459,7 +543,7 @@ export default function HomeScreen() {
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 500,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }).start();
 
       console.log('Sending to OpenAI:', finalText);
@@ -475,7 +559,7 @@ export default function HomeScreen() {
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 300,
-      useNativeDriver: true,
+      useNativeDriver: false,
     }).start();
   };
 
@@ -483,7 +567,7 @@ export default function HomeScreen() {
     Animated.timing(fadeAnim, {
       toValue: 0,
       duration: 300,
-      useNativeDriver: true,
+      useNativeDriver: false,
     }).start(() => setPreviewMediaAsset(null));
   };
 
@@ -503,7 +587,11 @@ export default function HomeScreen() {
   useEffect(() => {
     if (infoResult) {
       fadeAnim.setValue(0);
-      fadeAnim.setValue(withTiming(1, { duration: 300 }));
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: false,
+      }).start();
     }
   }, [infoResult]);
 
@@ -549,15 +637,23 @@ export default function HomeScreen() {
                       onPress={() => handleMediaPreview(media)}
                       style={styles.imageTouchable}
                     >
-                      <Image 
-                        source={{ uri: media.uri }} 
-                        style={styles.imageThumbnail}
-                        resizeMode="cover"
-                      />
+                      {isLoadingOcr[media.uri] ? (
+                        <BlurView intensity={90} style={styles.imageThumbnail}>
+                          <Image 
+                            source={{ uri: media.uri }} 
+                            style={styles.imageThumbnail}
+                            resizeMode="cover"
+                          />
+                        </BlurView>
+                      ) : (
+                        <Image 
+                          source={{ uri: media.uri }} 
+                          style={styles.imageThumbnail}
+                          resizeMode="cover"
+                        />
+                      )}
                       {isLoadingOcr[media.uri] && (
-                        <View style={styles.loadingOverlayThumb}>
-                          <ActivityIndicator size="small" color="#fff" />
-                        </View>
+                        <OcrLoadingAnimation />
                       )}
                     </TouchableOpacity>
                   )}

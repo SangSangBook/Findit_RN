@@ -1,7 +1,7 @@
 import { Platform, StyleSheet } from 'react-native';
 
 export const getThemedStyles = (isDarkMode: boolean) => {
-  const modalBackgroundColor = isDarkMode ? '#1C1C1E' : '#F2F2F7';
+  const modalBackgroundColor = isDarkMode ? '#1C1C1E' : '#ffffff';
   const closeButtonIconColor = isDarkMode ? '#FFFFFF' : '#000000';
   const textFieldBg = isDarkMode ? '#232323' : '#fff';
   const textFieldBorder = isDarkMode ? '#444' : '#ccc';
@@ -10,40 +10,59 @@ export const getThemedStyles = (isDarkMode: boolean) => {
 
   return {
     styles: StyleSheet.create({
-      modalContainer: {
-        flex: 1,
-        backgroundColor: modalBackgroundColor,
+      modal: {
+        margin: 0,
+        justifyContent: 'flex-end',
       },
-      modalCloseButton: {
-        position: 'absolute',
-        top: Platform.OS === 'ios' ? 20 : 20,
-        right: 20,
-        zIndex: 20,
-        padding: 10,
+      bottomSheet: {
+        backgroundColor: modalBackgroundColor,
+        borderTopLeftRadius: 16,
+        borderTopRightRadius: 16,
+        height: '80%',
+      },
+      bottomSheetHeader: {
+        alignItems: 'center',
+        paddingVertical: 12,
+      },
+      bottomSheetHandle: {
+        width: 50,
+        height: 4,
+        backgroundColor: '#8E8E8E',
+        borderRadius: 1.5,
+        alignSelf: 'center',
+        marginTop: 8,
+      },
+      bottomSheetContent: {
+        flex: 1,
+        paddingHorizontal: 16,
+        paddingBottom: Platform.OS === 'android' ? 20 : 0,
+      },
+      previewTitleContainer: {
+        flexDirection: 'row',
+      },
+      previewTitle: {
+        fontFamily: 'PretendardSemiBold',
+        fontSize: 22,
+        color: '#222222',
+      },
+      previewTitleDot: {
+        color: '#46B876',
       },
       textFieldWrapper: {
-        padding: 24,
+        marginVertical: 16,
+        backgroundColor: 'transparent',
       },
       textFieldContainer: {
         backgroundColor: textFieldBg,
-        borderColor: textFieldBorder,
-        borderWidth: 1,
-        borderRadius: 12,
         paddingHorizontal: 12,
-        paddingVertical: 4,
         marginBottom: 10,
-      },
-      textFieldWrapperRow: {
-        padding: 16,
       },
       textFieldContainerRow: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: textFieldBg,
-        borderRadius: 8,
         paddingHorizontal: 12,
-        paddingVertical: 8,
-        marginBottom: 10,
+        marginBottom: 0,
       },
       textInput: {
         flex: 1,
@@ -51,6 +70,9 @@ export const getThemedStyles = (isDarkMode: boolean) => {
         padding: 0,
         color: textColor,
         textAlignVertical: 'center',
+        minHeight: 40,
+        maxHeight: 40,
+        height: 40,
       },
       dismissKeyboardButton: {
         marginLeft: 8,
@@ -73,8 +95,49 @@ export const getThemedStyles = (isDarkMode: boolean) => {
         fontWeight: 'bold',
         fontSize: 16,
       },
+      clearButton: {
+        marginLeft: 8,
+        padding: 6,
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: 40,
+      },
     }),
     closeButtonIconColor,
     placeholderTextColor,
   };
 };
+
+export const mediaPreviewModalStyles = StyleSheet.create({
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    flex: 1,
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: 'hidden',
+  },
+  previewContainer: {
+    flex: 1,
+    width: '100%',
+  },
+  textFieldWrapper: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderTopWidth: 1,
+    borderTopColor: '#ddd',
+  },
+  textField: {
+    backgroundColor: 'white',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+});
