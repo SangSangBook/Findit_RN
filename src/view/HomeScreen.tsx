@@ -5,7 +5,7 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import type { ImagePickerAsset } from 'expo-image-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Animated, Image, Platform, ScrollView, Text, TouchableOpacity, View, useColorScheme, ActionSheetIOS } from 'react-native';
+import { ActionSheetIOS, ActivityIndicator, Alert, Animated, Image, Platform, ScrollView, Text, TouchableOpacity, View, useColorScheme } from 'react-native';
 import type { OcrResult } from '../api/googleVisionApi';
 import { ocrWithGoogleVision } from '../api/googleVisionApi';
 import { getInfoFromTextWithOpenAI } from '../api/openaiApi';
@@ -399,23 +399,16 @@ const [ocrResults, setOcrResults] = useState<{[uri: string]: OcrResult | null}>(
           isFetchingInfo={isFetchingInfo}
         />
         
-        {selectedImages.length === 0 ? (
-          <TouchableOpacity
-            style={styles.imageUploadButton}
-            onPress={showMediaOptions}
-          >
-            <MaterialIcons name="add" size={48} color="#8e8e8e" />
-            <Text style={styles.imageUploadButtonText}>미디어 업로드</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.mediaPreviewContainer}>
+        {selectedImages.length > 0 && (
+          <View style={styles.imagesSection}>
+            <Text style={styles.sectionTitle}>선택된 미디어</Text>
             <ScrollView 
               horizontal 
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.mediaPreviewScrollContainer}
+              contentContainerStyle={styles.imagesScrollContainer}
             >
               {selectedImages.map((media, index) => (
-                <View key={media.assetId || media.uri} style={styles.mediaPreviewWrapper}>
+                <View key={media.assetId || media.uri} style={styles.imageWrapper}>
                   {media.type === 'video' ? (
                     <VideoPreview
                       videoUri={media.uri}
@@ -424,9 +417,9 @@ const [ocrResults, setOcrResults] = useState<{[uri: string]: OcrResult | null}>(
                   ) : (
                     <TouchableOpacity
                       onPress={() => handleMediaPreview(media)}
-                      style={styles.mediaPreviewTouchable}
+                      style={styles.imageTouchable}
                     >
-                      <Image source={{ uri: media.uri }} style={styles.mediaPreviewImage} />
+                      <Image source={{ uri: media.uri }} style={styles.imageThumbnail} />
                       {isLoadingOcr[media.uri] && (
                         <View style={styles.loadingOverlayThumb}>
                           <ActivityIndicator size="small" color="#fff" />
@@ -434,18 +427,30 @@ const [ocrResults, setOcrResults] = useState<{[uri: string]: OcrResult | null}>(
                       )}
                     </TouchableOpacity>
                   )}
+                  <ImageTypeSelector 
+                    uri={media.uri} 
+                    currentType={imageTypes[media.uri] || 'OTHER'} 
+                    onTypeChange={handleTypeChange} 
+                  />
+                  <TouchableOpacity
+                    style={styles.deleteButton}
+                    onPress={() => removeImage(media.uri)}
+                  >
+                    <MaterialIcons name="close" size={20} color="#fff" />
+                  </TouchableOpacity>
                 </View>
               ))}
             </ScrollView>
-            <TouchableOpacity 
-              style={styles.addMoreMediaButton}
-              onPress={showMediaOptions}
-            >
-              <MaterialIcons name="add-circle" size={24} color="#4299e1" />
-              <Text style={styles.addMoreMediaText}>더 추가</Text>
-            </TouchableOpacity>
           </View>
         )}
+        
+        <TouchableOpacity
+          style={styles.imageUploadButton}
+          onPress={showMediaOptions}
+        >
+          <MaterialIcons name="add" size={48} color="#8e8e8e" />
+          <Text style={styles.imageUploadButtonText}>미디어 업로드</Text>
+        </TouchableOpacity>
         
         <TouchableOpacity style={styles.getInfoButton} onPress={handleGetInfo}>
           <Text style={styles.getInfoButtonText}>미디어 정보 가져오기</Text>
@@ -477,52 +482,6 @@ const [ocrResults, setOcrResults] = useState<{[uri: string]: OcrResult | null}>(
           <Text style={styles.buttonText}>사진 촬영</Text>
         </TouchableOpacity>
       </View> */}
-
-      {selectedImages.length > 0 && (
-        <View style={styles.imagesSection}>
-          <Text style={styles.sectionTitle}>선택된 미디어</Text>
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.imagesScrollContainer}
-          >
-            {selectedImages.map((media, index) => (
-              <View key={media.assetId || media.uri} style={styles.imageWrapper}>
-                {media.type === 'video' ? (
-                  <VideoPreview
-                    videoUri={media.uri}
-                    onPress={() => handleMediaPreview(media)}
-                  />
-                ) : (
-                  <TouchableOpacity
-                    onPress={() => handleMediaPreview(media)}
-                    style={styles.imageTouchable}
-                  >
-                    <Image source={{ uri: media.uri }} style={styles.imageThumbnail} />
-                    {isLoadingOcr[media.uri] && (
-                      <View style={styles.loadingOverlayThumb}>
-                        <ActivityIndicator size="small" color="#fff" />
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                )}
-                {/* Always show ImageTypeSelector if media exists, regardless of type */}
-                <ImageTypeSelector 
-                  uri={media.uri} 
-                  currentType={imageTypes[media.uri] || 'OTHER'} 
-                  onTypeChange={handleTypeChange} 
-                />
-                <TouchableOpacity
-                  style={styles.deleteButton}
-                  onPress={() => removeImage(media.uri)}
-                >
-                  <MaterialIcons name="close" size={20} color="#fff" />
-                </TouchableOpacity>
-              </View>
-            ))}
-          </ScrollView>
-        </View>
-      )}
 
       {/* 미디어 상세 보기 모달 (이전에 분리한 컴포넌트) */}
       <MediaPreviewModal
