@@ -1,22 +1,16 @@
 // /Users/kkm/Findit_RN/Findit/src/components/SummarizationSection.tsx
 import React from 'react';
-import { ScrollView, Text, TextInput, View } from 'react-native';
+import { Text, TextInput, View } from 'react-native';
 import { summarizationSectionStyles as styles } from '../styles/SummarizationSection.styles';
 
 interface SummarizationSectionProps {
   questionText: string;
   setQuestionText: (text: string) => void;
-  infoResult?: string | null;
-  isFetchingInfo?: boolean;
-  handleGetInfo?: () => void;
 }
 
 const SummarizationSection: React.FC<SummarizationSectionProps> = ({
   questionText,
   setQuestionText,
-  infoResult,
-  isFetchingInfo,
-  handleGetInfo,
 }) => {
   return (
     <View style={styles.container}>
@@ -31,11 +25,6 @@ const SummarizationSection: React.FC<SummarizationSectionProps> = ({
         scrollEnabled={true}
         textAlignVertical="top"
       />
-      {infoResult && (
-        <ScrollView style={styles.resultContainer}>
-          <Text style={styles.resultText}>{infoResult}</Text>
-        </ScrollView>
-      )}
     </View>
   );
 };

@@ -253,25 +253,32 @@ export const homeScreenStyles = StyleSheet.create({
   // 정보 결과 관련 스타일
   infoResultContainer: {
     marginTop: 20,
-    marginHorizontal: 20,
+    marginHorizontal: 36,
     padding: 15,
-    backgroundColor: '#ffffff',
-    borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    backgroundColor: '#f3f4f6',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
   },
   infoResultScrollView: {
     maxHeight: 300,
   },
   infoResultText: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: '#333333',
+    fontFamily: 'GmarketSansMedium',
+    fontSize: 14,
+    color: '#1f2937',
+    lineHeight: 20,
+  },
+  // 로딩 애니메이션 스타일
+  loadingWaveContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingBar: {
+    width: 4,
+    height: 20,
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 2,
   },
 });

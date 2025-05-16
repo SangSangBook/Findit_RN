@@ -47,6 +47,63 @@ interface ImageTypeState {
   [uri: string]: ImageType;
 }
 
+const LoadingWave = () => {
+  const [animations] = useState([
+    new Animated.Value(0),
+    new Animated.Value(0),
+    new Animated.Value(0),
+    new Animated.Value(0),
+  ]);
+
+  useEffect(() => {
+    const animate = () => {
+      const sequences = animations.map((anim, index) => {
+        return Animated.sequence([
+          Animated.timing(anim, {
+            toValue: 1,
+            duration: 400,
+            delay: index * 100,
+            useNativeDriver: true,
+          }),
+          Animated.timing(anim, {
+            toValue: 0,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+        ]);
+      });
+
+      Animated.stagger(100, sequences).start(() => animate());
+    };
+
+    animate();
+  }, []);
+
+  return (
+    <View style={styles.loadingWaveContainer}>
+      {animations.map((anim, index) => (
+        <Animated.View
+          key={index}
+          style={[
+            styles.loadingBar,
+            {
+              opacity: anim,
+              transform: [
+                {
+                  scaleY: anim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.5, 1],
+                  }),
+                },
+              ],
+            },
+          ]}
+        />
+      ))}
+    </View>
+  );
+};
+
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
   const [selectedImages, setSelectedImages] = useState<ImagePickerAsset[]>([]);
@@ -415,9 +472,6 @@ export default function HomeScreen() {
         <SummarizationSection
           questionText={questionText}
           setQuestionText={setQuestionText}
-          infoResult={infoResult}
-          isFetchingInfo={isFetchingInfo}
-          handleGetInfo={handleGetInfo}
         />
         
         {selectedImages.length > 0 && (
@@ -480,23 +534,22 @@ export default function HomeScreen() {
           onPress={handleGetInfo}
           disabled={isFetchingInfo}
         >
-          <Text style={styles.getInfoButtonText}>
-            {isFetchingInfo ? "답변을 생성하는 중..." : "질문하기"}
-          </Text>
+          {isFetchingInfo ? (
+            <LoadingWave />
+          ) : (
+            <Text style={styles.getInfoButtonText}>
+              질문하기
+            </Text>
+          )}
         </TouchableOpacity>
 
-        {/* 답변 표시 영역을 '질문하기' 버튼 아래로 이동 */}
+        {/* 답변 표시 영역 */}
         {infoResult && (
-          <Animated.View 
-            style={[
-              styles.infoResultContainer,
-              { opacity: fadeAnim }
-            ]}
-          >
+          <View style={styles.infoResultContainer}>
             <ScrollView style={styles.infoResultScrollView}>
               <Text style={styles.infoResultText}>{infoResult}</Text>
             </ScrollView>
-          </Animated.View>
+          </View>
         )}
       </View>
 
