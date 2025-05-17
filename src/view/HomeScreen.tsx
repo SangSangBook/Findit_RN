@@ -30,6 +30,7 @@ import VideoPreview from '../components/VideoPreview';
 import { ImageType } from '../constants/ImageTypes';
 import { homeScreenStyles as styles } from '../styles/HomeScreen.styles';
 import { detectImageType } from '../utils/imageTypeDetector';
+import { translateToKorean } from '../utils/koreanTranslator';
 
 interface SelectedImage {
   uri: string;
@@ -548,7 +549,7 @@ const HomeScreen = () => {
 
                 if (analysisResult.objects.length > 0) {
                   console.log('\n[감지된 물체]');
-                  analysisResult.objects.forEach(obj => {
+                  for (const obj of analysisResult.objects) {
                     const vertices = obj.boundingBox;
                     const minX = Math.min(...vertices.map(v => v.x));
                     const minY = Math.min(...vertices.map(v => v.y));
@@ -563,9 +564,13 @@ const HomeScreen = () => {
                       bottom: Math.round(maxY * 100)
                     };
                     
-                    console.log(`- ${obj.name} (신뢰도: ${(obj.confidence * 100).toFixed(1)}%)`);
+                    // 영어 단어를 한글로 번역
+                    const koreanTranslations = await translateToKorean(obj.name);
+                    const koreanText = koreanTranslations.length > 0 ? ` (${koreanTranslations.join(', ')})` : '';
+                    
+                    console.log(`- ${obj.name}${koreanText} (신뢰도: ${(obj.confidence * 100).toFixed(1)}%)`);
                     console.log(`  위치: 왼쪽 ${position.left}%, 위 ${position.top}%, 오른쪽 ${position.right}%, 아래 ${position.bottom}%`);
-                  });
+                  }
                 }
 
                 if (analysisResult.labels.length > 0) {
@@ -662,7 +667,7 @@ const HomeScreen = () => {
 
             if (analysisResult.objects.length > 0) {
               console.log('\n[감지된 물체]');
-              analysisResult.objects.forEach(obj => {
+              for (const obj of analysisResult.objects) {
                 const vertices = obj.boundingBox;
                 const minX = Math.min(...vertices.map(v => v.x));
                 const minY = Math.min(...vertices.map(v => v.y));
@@ -677,9 +682,13 @@ const HomeScreen = () => {
                   bottom: Math.round(maxY * 100)
                 };
                 
-                console.log(`- ${obj.name} (신뢰도: ${(obj.confidence * 100).toFixed(1)}%)`);
+                // 영어 단어를 한글로 번역
+                const koreanTranslations = await translateToKorean(obj.name);
+                const koreanText = koreanTranslations.length > 0 ? ` (${koreanTranslations.join(', ')})` : '';
+                
+                console.log(`- ${obj.name}${koreanText} (신뢰도: ${(obj.confidence * 100).toFixed(1)}%)`);
                 console.log(`  위치: 왼쪽 ${position.left}%, 위 ${position.top}%, 오른쪽 ${position.right}%, 아래 ${position.bottom}%`);
-              });
+              }
             }
 
             if (analysisResult.labels.length > 0) {
@@ -789,7 +798,7 @@ const HomeScreen = () => {
         // 감지된 물체 정보
         if (analysisResult.objects.length > 0) {
           analysisText += '[감지된 물체]\n';
-          analysisResult.objects.forEach(obj => {
+          for (const obj of analysisResult.objects) {
             const vertices = obj.boundingBox;
             const minX = Math.min(...vertices.map(v => v.x));
             const minY = Math.min(...vertices.map(v => v.y));
@@ -804,9 +813,13 @@ const HomeScreen = () => {
               bottom: Math.round(maxY * 100)
             };
             
-            console.log(`- ${obj.name} (신뢰도: ${(obj.confidence * 100).toFixed(1)}%)`);
+            // 영어 단어를 한글로 번역
+            const koreanTranslations = await translateToKorean(obj.name);
+            const koreanText = koreanTranslations.length > 0 ? ` (${koreanTranslations.join(', ')})` : '';
+            
+            console.log(`- ${obj.name}${koreanText} (신뢰도: ${(obj.confidence * 100).toFixed(1)}%)`);
             console.log(`  위치: 왼쪽 ${position.left}%, 위 ${position.top}%, 오른쪽 ${position.right}%, 아래 ${position.bottom}%`);
-          });
+          }
           analysisText += '\n';
         }
 
