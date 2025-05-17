@@ -1,5 +1,5 @@
 import { GOOGLE_CLOUD_VISION_API_KEY, OPENAI_API_KEY } from '@env';
-import { MaterialIcons } from '@expo/vector-icons'; // MaterialIcons는 MediaPreviewModal에서 사용될 수 있으므로 유지하거나, HomeScreen에서 직접 사용되지 않으면 삭제 가능
+import { MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import * as FileSystem from 'expo-file-system';
 import * as ImageManipulator from 'expo-image-manipulator';
@@ -24,7 +24,7 @@ import { ocrWithGoogleVision } from '../api/googleVisionApi';
 import { getInfoFromTextWithOpenAI } from '../api/openaiApi';
 import { extractTextFromVideo } from '../api/videoOcrApi';
 import ImageTypeSelector from '../components/ImageTypeSelector';
-import MediaPreviewModal from '../components/MediaPreviewModal'; // 새로 추가
+import MediaPreviewModal from '../components/MediaPreviewModal';
 import SummarizationSection from '../components/SummarizationSection';
 import VideoPreview from '../components/VideoPreview';
 import { ImageType } from '../constants/ImageTypes';
@@ -337,7 +337,7 @@ const markdownStyles = {
   },
 } as const;
 
-export default function HomeScreen() {
+const HomeScreen = () => {
   const [colorScheme, setColorScheme] = useState(Appearance.getColorScheme());
   
   useEffect(() => {
@@ -364,6 +364,7 @@ export default function HomeScreen() {
   const [selectedObject, setSelectedObject] = useState<number | null>(null);
   const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
   const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const handleTypeChange = (uri: string, newType: ImageType) => {
     setImageTypes(prev => ({ ...prev, [uri]: newType }));
@@ -501,7 +502,7 @@ export default function HomeScreen() {
   const handleChooseMedia = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.All, // Using MediaTypeOptions until updated to newer version
+        mediaTypes: ImagePicker.MediaTypeOptions.All,
         allowsMultipleSelection: true,
         quality: 1,
       });
@@ -534,6 +535,60 @@ export default function HomeScreen() {
               await processVideoWithOCR(asset.uri);
             } else {
               await processImageWithOCR(asset.uri);
+              // 이미지 분석 결과 로깅
+              const analysisResult = await analyzeImage(asset.uri);
+              if (analysisResult) {
+                console.log('\n=== 이미지 분석 결과 ===');
+                console.log('파일:', asset.uri);
+                
+                if (analysisResult.text) {
+                  console.log('\n[텍스트 분석 결과]');
+                  console.log(analysisResult.text);
+                }
+
+                if (analysisResult.objects.length > 0) {
+                  console.log('\n[감지된 물체]');
+                  analysisResult.objects.forEach(obj => {
+                    const vertices = obj.boundingBox;
+                    const minX = Math.min(...vertices.map(v => v.x));
+                    const minY = Math.min(...vertices.map(v => v.y));
+                    const maxX = Math.max(...vertices.map(v => v.x));
+                    const maxY = Math.max(...vertices.map(v => v.y));
+                    
+                    // 위치 정보를 이미지 크기에 대한 상대적 비율로 표시
+                    const position = {
+                      left: Math.round(minX * 100),
+                      top: Math.round(minY * 100),
+                      right: Math.round(maxX * 100),
+                      bottom: Math.round(maxY * 100)
+                    };
+                    
+                    console.log(`- ${obj.name} (신뢰도: ${(obj.confidence * 100).toFixed(1)}%)`);
+                    console.log(`  위치: 왼쪽 ${position.left}%, 위 ${position.top}%, 오른쪽 ${position.right}%, 아래 ${position.bottom}%`);
+                  });
+                }
+
+                if (analysisResult.labels.length > 0) {
+                  console.log('\n[이미지 라벨]');
+                  analysisResult.labels.forEach(label => {
+                    console.log(`- ${label.description} (신뢰도: ${(label.confidence * 100).toFixed(1)}%)`);
+                  });
+                }
+
+                if (analysisResult.faces.length > 0) {
+                  console.log('\n[얼굴 감지 결과]');
+                  analysisResult.faces.forEach((face, index) => {
+                    console.log(`얼굴 ${index + 1}:`);
+                    if (face.joyLikelihood !== 'UNLIKELY') console.log(`- 기쁨: ${face.joyLikelihood}`);
+                    if (face.sorrowLikelihood !== 'UNLIKELY') console.log(`- 슬픔: ${face.sorrowLikelihood}`);
+                    if (face.angerLikelihood !== 'UNLIKELY') console.log(`- 분노: ${face.angerLikelihood}`);
+                    if (face.surpriseLikelihood !== 'UNLIKELY') console.log(`- 놀람: ${face.surpriseLikelihood}`);
+                    if (face.headwearLikelihood !== 'UNLIKELY') console.log(`- 모자 착용: ${face.headwearLikelihood}`);
+                  });
+                }
+
+                console.log('\n=====================\n');
+              }
             }
           }
         }
@@ -572,7 +627,7 @@ export default function HomeScreen() {
 
     try {
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images, // Using MediaTypeOptions until updated to newer version
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: false,
         quality: 1,
       });
@@ -594,6 +649,60 @@ export default function HomeScreen() {
 
         if (newImage.uri) {
           await processImageWithOCR(newImage.uri);
+          // 이미지 분석 결과 로깅
+          const analysisResult = await analyzeImage(newImage.uri);
+          if (analysisResult) {
+            console.log('\n=== 이미지 분석 결과 ===');
+            console.log('파일:', newImage.uri);
+            
+            if (analysisResult.text) {
+              console.log('\n[텍스트 분석 결과]');
+              console.log(analysisResult.text);
+            }
+
+            if (analysisResult.objects.length > 0) {
+              console.log('\n[감지된 물체]');
+              analysisResult.objects.forEach(obj => {
+                const vertices = obj.boundingBox;
+                const minX = Math.min(...vertices.map(v => v.x));
+                const minY = Math.min(...vertices.map(v => v.y));
+                const maxX = Math.max(...vertices.map(v => v.x));
+                const maxY = Math.max(...vertices.map(v => v.y));
+                
+                // 위치 정보를 이미지 크기에 대한 상대적 비율로 표시
+                const position = {
+                  left: Math.round(minX * 100),
+                  top: Math.round(minY * 100),
+                  right: Math.round(maxX * 100),
+                  bottom: Math.round(maxY * 100)
+                };
+                
+                console.log(`- ${obj.name} (신뢰도: ${(obj.confidence * 100).toFixed(1)}%)`);
+                console.log(`  위치: 왼쪽 ${position.left}%, 위 ${position.top}%, 오른쪽 ${position.right}%, 아래 ${position.bottom}%`);
+              });
+            }
+
+            if (analysisResult.labels.length > 0) {
+              console.log('\n[이미지 라벨]');
+              analysisResult.labels.forEach(label => {
+                console.log(`- ${label.description} (신뢰도: ${(label.confidence * 100).toFixed(1)}%)`);
+              });
+            }
+
+            if (analysisResult.faces.length > 0) {
+              console.log('\n[얼굴 감지 결과]');
+              analysisResult.faces.forEach((face, index) => {
+                console.log(`얼굴 ${index + 1}:`);
+                if (face.joyLikelihood !== 'UNLIKELY') console.log(`- 기쁨: ${face.joyLikelihood}`);
+                if (face.sorrowLikelihood !== 'UNLIKELY') console.log(`- 슬픔: ${face.sorrowLikelihood}`);
+                if (face.angerLikelihood !== 'UNLIKELY') console.log(`- 분노: ${face.angerLikelihood}`);
+                if (face.surpriseLikelihood !== 'UNLIKELY') console.log(`- 놀람: ${face.surpriseLikelihood}`);
+                if (face.headwearLikelihood !== 'UNLIKELY') console.log(`- 모자 착용: ${face.headwearLikelihood}`);
+              });
+            }
+
+            console.log('\n=====================\n');
+          }
         }
       }
     } catch (error) {
@@ -638,32 +747,84 @@ export default function HomeScreen() {
           analysisText += '[비디오 분석 중 오류가 발생했습니다.]\n\n';
         }
       } else {
-        // 이미지 분석 로직 (기존 코드 유지)
+        // 이미지 분석 로직
         const analysisResult = await analyzeImage(selectedMedia.uri);
         if (!analysisResult) {
           throw new Error('이미지 분석에 실패했습니다.');
         }
 
+        // 물체 감지 결과를 기반으로 문서 유형 추정
+        const detectedObjects = analysisResult.objects.map(obj => obj.name.toLowerCase());
+        const detectedLabels = analysisResult.labels.map(label => label.description.toLowerCase());
+        
+        // 문서 유형 판별
+        let documentType = '';
+        if (detectedObjects.includes('receipt') || detectedLabels.includes('receipt')) {
+          documentType = '영수증';
+        } else if (detectedObjects.includes('id card') || detectedLabels.includes('id card')) {
+          documentType = '신분증';
+        } else if (detectedObjects.includes('business card') || detectedLabels.includes('business card')) {
+          documentType = '명함';
+        } else if (detectedObjects.includes('document') || detectedLabels.includes('document')) {
+          documentType = '문서';
+        }
+
+        // 문서 유형이 감지된 경우
+        if (documentType) {
+          analysisText += `[문서 유형]\n${documentType}\n\n`;
+          
+          // 영수증인 경우 특별 처리
+          if (documentType === '영수증') {
+            const text = analysisResult.text;
+            const totalAmountMatch = text.match(/총\s*[가-힣]*\s*금액\s*:?\s*(\d+[,\d]*원)/i) || 
+                                   text.match(/합계\s*:?\s*(\d+[,\d]*원)/i) ||
+                                   text.match(/total\s*:?\s*(\d+[,\d]*원)/i);
+            
+            if (totalAmountMatch) {
+              analysisText += `[결제 금액]\n${totalAmountMatch[1]}\n\n`;
+            }
+          }
+        }
+
+        // 감지된 물체 정보
+        if (analysisResult.objects.length > 0) {
+          analysisText += '[감지된 물체]\n';
+          analysisResult.objects.forEach(obj => {
+            const vertices = obj.boundingBox;
+            const minX = Math.min(...vertices.map(v => v.x));
+            const minY = Math.min(...vertices.map(v => v.y));
+            const maxX = Math.max(...vertices.map(v => v.x));
+            const maxY = Math.max(...vertices.map(v => v.y));
+            
+            // 위치 정보를 이미지 크기에 대한 상대적 비율로 표시
+            const position = {
+              left: Math.round(minX * 100),
+              top: Math.round(minY * 100),
+              right: Math.round(maxX * 100),
+              bottom: Math.round(maxY * 100)
+            };
+            
+            console.log(`- ${obj.name} (신뢰도: ${(obj.confidence * 100).toFixed(1)}%)`);
+            console.log(`  위치: 왼쪽 ${position.left}%, 위 ${position.top}%, 오른쪽 ${position.right}%, 아래 ${position.bottom}%`);
+          });
+          analysisText += '\n';
+        }
+
+        // 텍스트 분석 결과
         if (analysisResult.text) {
           analysisText += `[텍스트 분석 결과]\n${analysisResult.text}\n\n`;
         }
 
-        if (analysisResult.objects.length > 0) {
-          analysisText += '[감지된 물체]\n';
-          analysisResult.objects.forEach(obj => {
-            analysisText += `- ${obj.name}\n`;
-          });
-          analysisText += '\n';
-        }
-
+        // 이미지 라벨
         if (analysisResult.labels.length > 0) {
           analysisText += '[이미지 라벨]\n';
           analysisResult.labels.forEach(label => {
-            analysisText += `- ${label.description}\n`;
+            analysisText += `- ${label.description} (신뢰도: ${Math.round(label.confidence * 100)}%)\n`;
           });
           analysisText += '\n';
         }
 
+        // 얼굴 감지 결과
         if (analysisResult.faces.length > 0) {
           analysisText += '[얼굴 감지 결과]\n';
           analysisResult.faces.forEach((face, index) => {
@@ -673,6 +834,24 @@ export default function HomeScreen() {
             if (face.angerLikelihood !== 'UNLIKELY') analysisText += `- 분노: ${face.angerLikelihood}\n`;
             if (face.surpriseLikelihood !== 'UNLIKELY') analysisText += `- 놀람: ${face.surpriseLikelihood}\n`;
             if (face.headwearLikelihood !== 'UNLIKELY') analysisText += `- 모자 착용: ${face.headwearLikelihood}\n`;
+          });
+          analysisText += '\n';
+        }
+
+        // 랜드마크 감지 결과
+        if (analysisResult.landmarks.length > 0) {
+          analysisText += '[감지된 랜드마크]\n';
+          analysisResult.landmarks.forEach(landmark => {
+            analysisText += `- ${landmark.description} (신뢰도: ${Math.round(landmark.score * 100)}%)\n`;
+          });
+          analysisText += '\n';
+        }
+
+        // 로고 감지 결과
+        if (analysisResult.logos.length > 0) {
+          analysisText += '[감지된 로고]\n';
+          analysisResult.logos.forEach(logo => {
+            analysisText += `- ${logo.description} (신뢰도: ${Math.round(logo.score * 100)}%)\n`;
           });
           analysisText += '\n';
         }
@@ -758,115 +937,171 @@ export default function HomeScreen() {
         ],
       };
 
-      // Make API request
-      const response = await fetch(
-        `https://vision.googleapis.com/v1/images:annotate?key=${GOOGLE_CLOUD_VISION_API_KEY}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestBody),
+      // Make API request with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30초 타임아웃
+
+      try {
+        const response = await fetch(
+          `https://vision.googleapis.com/v1/images:annotate?key=${GOOGLE_CLOUD_VISION_API_KEY}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestBody),
+            signal: controller.signal,
+          }
+        );
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(`API Error: ${errorData.error?.message || response.statusText}`);
         }
-      );
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (data.error) {
-        throw new Error(data.error.message);
+        if (data.error) {
+          throw new Error(data.error.message);
+        }
+
+        const responseData = data.responses[0];
+
+        // Process text detection results
+        const textAnnotations = responseData.textAnnotations || [];
+        const fullText = textAnnotations[0]?.description || '';
+
+        // Process object detection results
+        const objects = responseData.localizedObjectAnnotations || [];
+        const labels = responseData.labelAnnotations || [];
+
+        // Process face detection results
+        const faces = responseData.faceAnnotations || [];
+        const faceInfo = faces.map((face: any) => ({
+          joyLikelihood: face.joyLikelihood,
+          sorrowLikelihood: face.sorrowLikelihood,
+          angerLikelihood: face.angerLikelihood,
+          surpriseLikelihood: face.surpriseLikelihood,
+          underExposedLikelihood: face.underExposedLikelihood,
+          blurredLikelihood: face.blurredLikelihood,
+          headwearLikelihood: face.headwearLikelihood,
+        }));
+
+        // Process landmark detection results
+        const landmarks = responseData.landmarkAnnotations || [];
+        const landmarkInfo = landmarks.map((landmark: any) => ({
+          description: landmark.description,
+          score: landmark.score,
+          locations: landmark.locations,
+        }));
+
+        // Process logo detection results
+        const logos = responseData.logoAnnotations || [];
+        const logoInfo = logos.map((logo: any) => ({
+          description: logo.description,
+          score: logo.score,
+        }));
+
+        // Process safe search detection results
+        const safeSearch = responseData.safeSearchAnnotation || {};
+        const safeSearchInfo = {
+          adult: safeSearch.adult,
+          spoof: safeSearch.spoof,
+          medical: safeSearch.medical,
+          violence: safeSearch.violence,
+          racy: safeSearch.racy,
+        };
+
+        // Process image properties
+        const imageProperties = responseData.imagePropertiesAnnotation || {};
+        const dominantColors = imageProperties.dominantColors?.colors || [];
+
+        // Process web detection results
+        const webDetection = responseData.webDetection || {};
+        const webEntities = webDetection.webEntities || [];
+        const similarImages = webDetection.visuallySimilarImages || [];
+
+        // Combine all results
+        const result: AnalysisResult = {
+          text: fullText,
+          objects: objects.map((obj: any) => ({
+            name: obj.name,
+            confidence: obj.score,
+            boundingBox: obj.boundingPoly.normalizedVertices,
+          })),
+          labels: labels.map((label: any) => ({
+            description: label.description,
+            confidence: label.score,
+          })),
+          faces: faceInfo,
+          landmarks: landmarkInfo,
+          logos: logoInfo,
+          safeSearch: safeSearchInfo,
+          colors: dominantColors.map((color: any) => ({
+            color: color.color,
+            score: color.score,
+            pixelFraction: color.pixelFraction,
+          })),
+          webEntities: webEntities.map((entity: any) => ({
+            description: entity.description,
+            score: entity.score,
+          })),
+          similarImages: similarImages.map((image: any) => ({
+            url: image.url,
+            score: image.score,
+          })),
+        };
+
+        return result;
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        throw fetchError;
       }
-
-      const responseData = data.responses[0];
-
-      // Process text detection results
-      const textAnnotations = responseData.textAnnotations || [];
-      const fullText = textAnnotations[0]?.description || '';
-
-      // Process object detection results
-      const objects = responseData.localizedObjectAnnotations || [];
-      const labels = responseData.labelAnnotations || [];
-
-      // Process face detection results
-      const faces = responseData.faceAnnotations || [];
-      const faceInfo = faces.map((face: any) => ({
-        joyLikelihood: face.joyLikelihood,
-        sorrowLikelihood: face.sorrowLikelihood,
-        angerLikelihood: face.angerLikelihood,
-        surpriseLikelihood: face.surpriseLikelihood,
-        underExposedLikelihood: face.underExposedLikelihood,
-        blurredLikelihood: face.blurredLikelihood,
-        headwearLikelihood: face.headwearLikelihood,
-      }));
-
-      // Process landmark detection results
-      const landmarks = responseData.landmarkAnnotations || [];
-      const landmarkInfo = landmarks.map((landmark: any) => ({
-        description: landmark.description,
-        score: landmark.score,
-        locations: landmark.locations,
-      }));
-
-      // Process logo detection results
-      const logos = responseData.logoAnnotations || [];
-      const logoInfo = logos.map((logo: any) => ({
-        description: logo.description,
-        score: logo.score,
-      }));
-
-      // Process safe search detection results
-      const safeSearch = responseData.safeSearchAnnotation || {};
-      const safeSearchInfo = {
-        adult: safeSearch.adult,
-        spoof: safeSearch.spoof,
-        medical: safeSearch.medical,
-        violence: safeSearch.violence,
-        racy: safeSearch.racy,
-      };
-
-      // Process image properties
-      const imageProperties = responseData.imagePropertiesAnnotation || {};
-      const dominantColors = imageProperties.dominantColors?.colors || [];
-
-      // Process web detection results
-      const webDetection = responseData.webDetection || {};
-      const webEntities = webDetection.webEntities || [];
-      const similarImages = webDetection.visuallySimilarImages || [];
-
-      // Combine all results
-      return {
-        text: fullText,
-        objects: objects.map((obj: any) => ({
-          name: obj.name,
-          confidence: obj.score,
-          boundingBox: obj.boundingPoly.normalizedVertices,
-        })),
-        labels: labels.map((label: any) => ({
-          description: label.description,
-          confidence: label.score,
-        })),
-        faces: faceInfo,
-        landmarks: landmarkInfo,
-        logos: logoInfo,
-        safeSearch: safeSearchInfo,
-        colors: dominantColors.map((color: any) => ({
-          color: color.color,
-          score: color.score,
-          pixelFraction: color.pixelFraction,
-        })),
-        webEntities: webEntities.map((entity: any) => ({
-          description: entity.description,
-          score: entity.score,
-        })),
-        similarImages: similarImages.map((image: any) => ({
-          url: image.url,
-          score: image.score,
-        })),
-      };
     } catch (err) {
       console.error('Error analyzing image:', err);
-      setError(err instanceof Error ? err.message : '이미지 분석 중 오류가 발생했습니다.');
+      if (err instanceof Error) {
+        if (err.name === 'AbortError') {
+          setError('이미지 분석 시간이 초과되었습니다. 다시 시도해주세요.');
+        } else if (err.message.includes('API Error')) {
+          setError(`API 오류: ${err.message}`);
+        } else if (err.message.includes('Network request failed')) {
+          setError('네트워크 연결을 확인해주세요.');
+        } else {
+          setError(err.message);
+        }
+      } else {
+        setError('이미지 분석 중 오류가 발생했습니다.');
+      }
       return null;
     }
+  };
+
+  const handleMediaPreview = async (media: ImagePickerAsset) => {
+    setPreviewMediaAsset(media);
+    if (media.type === 'image') {
+      try {
+        const result = await analyzeImage(media.uri);
+        setAnalysisResult(result);
+      } catch (error) {
+        console.error('Error analyzing image:', error);
+      }
+    }
+  };
+
+  const removeImage = (uri: string) => {
+    setSelectedImages(prevImages => prevImages.filter(img => img.uri !== uri));
+    setOcrResults(prevResults => {
+      const newResults = { ...prevResults };
+      delete newResults[uri];
+      return newResults;
+    });
+    setImageTypes(prev => {
+      const newTypes = { ...prev };
+      delete newTypes[uri];
+      return newTypes;
+    });
   };
 
   const openPreview = (mediaAsset: ImagePickerAsset) => {
@@ -879,65 +1114,12 @@ export default function HomeScreen() {
   };
 
   const closePreview = () => {
+    setPreviewMediaAsset(null);
     Animated.timing(fadeAnim, {
       toValue: 0,
       duration: 300,
       useNativeDriver: false,
-    }).start(() => setPreviewMediaAsset(null));
-  };
-
-  const removeImage = (uri: string) => {
-    setSelectedImages(prevImages => prevImages.filter(image => image.uri !== uri));
-    setOcrResults(prevResults => {
-      const updatedResults = { ...prevResults };
-      delete updatedResults[uri];
-      return updatedResults;
-    });
-  };
-
-  const handleMediaPreview = (media: ImagePickerAsset) => {
-    openPreview(media);
-  };
-
-  useEffect(() => {
-    if (infoResult) {
-      fadeAnim.setValue(0);
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: false,
-      }).start();
-    }
-  }, [infoResult]);
-
-  const renderBoundingBoxes = () => {
-    if (!analysisResult?.objects || !imageDimensions.width) return null;
-
-    return analysisResult.objects.map((obj, index) => {
-      const isSelected = selectedObject === index;
-      const boxStyle = {
-        position: 'absolute' as const,
-        left: obj.boundingBox[0].x * imageDimensions.width,
-        top: obj.boundingBox[0].y * imageDimensions.height,
-        width: (obj.boundingBox[1].x - obj.boundingBox[0].x) * imageDimensions.width,
-        height: (obj.boundingBox[2].y - obj.boundingBox[0].y) * imageDimensions.height,
-        borderWidth: 2,
-        borderColor: isSelected ? '#ff3b30' : '#007AFF',
-        backgroundColor: isSelected ? 'rgba(255, 59, 48, 0.1)' : 'transparent',
-      };
-
-      return (
-        <TouchableOpacity
-          key={index}
-          style={boxStyle}
-          onPress={() => setSelectedObject(isSelected ? null : index)}
-        >
-          <View style={styles.objectLabel}>
-            <Text style={styles.objectLabelText}>{obj.name}</Text>
-          </View>
-        </TouchableOpacity>
-      );
-    });
+    }).start();
   };
 
   return (
@@ -1077,10 +1259,15 @@ export default function HomeScreen() {
         mediaAsset={previewMediaAsset}
         ocrResult={ocrResults[previewMediaAsset?.uri || '']}
         isLoadingOcr={isLoadingOcr[previewMediaAsset?.uri || '']}
-        colorScheme={colorScheme}
+        colorScheme={colorScheme === 'dark' ? 'dark' : 'light'}
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        analysisResult={analysisResult}
       >
         <Text>이미지 유형: {imageTypes[previewMediaAsset?.uri || ''] || '기타'}</Text>
       </MediaPreviewModal>
     </ScrollView>
   );
-}
+};
+
+export default HomeScreen;
