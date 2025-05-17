@@ -315,4 +315,100 @@ export const homeScreenStyles = StyleSheet.create({
   answerLoadingBarLong: {
     width: '90%',
   },
+  // Image Analysis Styles
+  loadingContainer: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+  },
+  analysisContainer: {
+    padding: 20,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginTop: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  analysisTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    color: '#333',
+  },
+  analysisSection: {
+    marginBottom: 20,
+  },
+  analysisSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+    color: '#444',
+  },
+  resultText: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#666',
+  },
+  objectItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  selectedObjectItem: {
+    backgroundColor: '#fff0f0',
+    borderColor: '#ff3b30',
+    borderWidth: 1,
+  },
+  objectName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+  },
+  objectConfidence: {
+    fontSize: 12,
+    color: '#666',
+  },
+  labelItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  labelText: {
+    fontSize: 14,
+    color: '#333',
+  },
+  labelConfidence: {
+    fontSize: 12,
+    color: '#666',
+  },
+  objectLabel: {
+    position: 'absolute',
+    top: -20,
+    left: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  objectLabelText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '500',
+  },
 });
