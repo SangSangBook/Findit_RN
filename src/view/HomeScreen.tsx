@@ -6,17 +6,18 @@ import type { ImagePickerAsset } from 'expo-image-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useState } from 'react';
 import {
-  ActionSheetIOS,
-  Alert,
-  Animated,
-  Appearance,
-  Image,
-  Platform,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View
+    ActionSheetIOS,
+    Alert,
+    Animated,
+    Appearance,
+    Image,
+    Platform,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
+import Markdown from 'react-native-markdown-display';
 import type { OcrResult } from '../api/googleVisionApi';
 import { ocrWithGoogleVision } from '../api/googleVisionApi';
 import { getInfoFromTextWithOpenAI } from '../api/openaiApi';
@@ -214,6 +215,75 @@ const OcrLoadingAnimation = () => {
     </View>
   );
 };
+
+// 마크다운 스타일 정의
+const markdownStyles = {
+  body: {
+    color: '#000',
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  heading1: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    color: '#000',
+  },
+  heading2: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 14,
+    color: '#000',
+  },
+  heading3: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    color: '#000',
+  },
+  paragraph: {
+    marginBottom: 12,
+  },
+  list_item: {
+    marginBottom: 8,
+  },
+  bullet_list: {
+    marginBottom: 12,
+  },
+  ordered_list: {
+    marginBottom: 12,
+  },
+  code_inline: {
+    backgroundColor: '#f0f0f0',
+    padding: 4,
+    borderRadius: 4,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  code_block: {
+    backgroundColor: '#f0f0f0',
+    padding: 12,
+    borderRadius: 4,
+    marginBottom: 12,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  blockquote: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#ddd',
+    paddingLeft: 12,
+    marginBottom: 12,
+    fontStyle: 'italic',
+  },
+  link: {
+    color: '#4299E2',
+    textDecorationLine: 'underline' as const,
+  },
+  strong: {
+    fontWeight: 'bold',
+  },
+  em: {
+    fontStyle: 'italic',
+  },
+} as const;
 
 export default function HomeScreen() {
   const [colorScheme, setColorScheme] = useState(Appearance.getColorScheme());
@@ -714,7 +784,9 @@ export default function HomeScreen() {
             <Text style={styles.infoContainerTitle}>이미지 분석 결과</Text>
             <View style={styles.infoResultContainer}>
               <ScrollView style={styles.infoResultScrollView}>
-                <Text style={styles.infoResultText}>{infoResult}</Text>
+                <Markdown style={markdownStyles}>
+                  {infoResult}
+                </Markdown>
               </ScrollView>
             </View>
           </View>
