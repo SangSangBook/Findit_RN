@@ -44,6 +44,7 @@ export const getThemedStyles = (isDarkMode: boolean) => {
         fontFamily: 'PretendardSemiBold',
         fontSize: 22,
         color: '#222222',
+        marginBottom: 10,
       },
       previewTitleDot: {
         color: '#46B876',

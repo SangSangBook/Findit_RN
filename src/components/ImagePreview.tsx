@@ -1,6 +1,6 @@
 import { ResizeMode, Video } from 'expo-av';
 import { ImagePickerAsset } from 'expo-image-picker';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Image, Keyboard, TouchableWithoutFeedback, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -147,6 +147,37 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
         return objName.includes(searchTermLower) || koreanTerms.some(term => objName.includes(term));
       })
     : [];
+
+  // 검색어가 변경될 때마다 결과 업데이트
+  useEffect(() => {
+    if (searchTerm.length > 0) {
+      // 검색어가 있을 때만 결과 업데이트
+      const newMatches = ocrResult?.textBoxes.filter(item => {
+        if (item.description.length > 100) return false;
+        return item.description.toLowerCase().includes(searchTerm.toLowerCase());
+      }) || [];
+
+      const newFullTextMatch = ocrResult?.fullText.toLowerCase().includes(searchTerm.toLowerCase()) || false;
+
+      const newObjectMatches = analysisResult?.objects.filter(obj => {
+        const objName = obj.name.toLowerCase();
+        const searchTermLower = searchTerm.toLowerCase();
+        
+        if (/[가-힣]/.test(searchTermLower)) {
+          const englishTerms = koreanToEnglish[searchTermLower] || [];
+          return englishTerms.some(term => objName.includes(term));
+        }
+        
+        const koreanTerms = englishToKorean[searchTermLower] || [];
+        return objName.includes(searchTermLower) || koreanTerms.some(term => objName.includes(term));
+      }) || [];
+
+      // 결과가 있으면 박스 표시
+      if (newMatches.length > 0 || newFullTextMatch || newObjectMatches.length > 0) {
+        // 박스 표시 로직은 이미 구현되어 있으므로 추가 작업 불필요
+      }
+    }
+  }, [searchTerm, ocrResult, analysisResult]);
 
   // 확대/축소 제스처 설정
   const pinchGesture = Gesture.Pinch()

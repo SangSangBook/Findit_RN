@@ -178,8 +178,10 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
                 placeholder="텍스트를 입력하세요..."
                 placeholderTextColor={placeholderTextColor}
                 value={textFieldValue}
-                onChangeText={setTextFieldValue}
-                onSubmitEditing={handleSearch}
+                onChangeText={(text) => {
+                  setTextFieldValue(text);
+                  setSearchTerm(text);
+                }}
                 returnKeyType="search"
               />
               <TouchableOpacity
