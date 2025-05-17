@@ -3,7 +3,6 @@ import { ImagePickerAsset } from 'expo-image-picker';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
-  ColorSchemeName,
   Dimensions,
   Keyboard,
   Platform,
@@ -24,7 +23,16 @@ interface MediaPreviewModalProps {
   mediaAsset: ImagePickerAsset | null;
   ocrResult: OcrResult | null;
   isLoadingOcr: boolean;
-  colorScheme: ColorSchemeName;
+  colorScheme: 'light' | 'dark';
+  searchTerm: string;
+  setSearchTerm: (term: string) => void;
+  analysisResult: {
+    objects: Array<{
+      name: string;
+      confidence: number;
+      boundingBox: Array<{ x: number; y: number }>;
+    }>;
+  } | null;
   children?: React.ReactNode;
 }
 
@@ -35,9 +43,12 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
   ocrResult,
   isLoadingOcr,
   colorScheme,
+  searchTerm,
+  setSearchTerm,
+  analysisResult = null,
+  children
 }) => {
   const [textFieldValue, setTextFieldValue] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
   const [modalHeight, setModalHeight] = useState(0.8);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const searchFieldPosition = new Animated.Value(0);
@@ -102,7 +113,9 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
   }, [textFieldValue]);
 
   const handleSearch = () => {
-    setSearchTerm(textFieldValue);
+    if (textFieldValue.trim()) {
+      setSearchTerm(textFieldValue.trim());
+    }
   };
 
   if (!mediaAsset) {
@@ -132,8 +145,8 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
         
         <View style={styles.bottomSheetContent}>
           <View style={styles.previewTitleContainer}>
-            <Text style={styles.previewTitle}>글자 찾기</Text>
-            <Text style={[styles.previewTitle, styles.previewTitleDot]}> .</Text>
+            <Text style={styles.previewTitle}>Find it</Text>
+            <Text style={[styles.previewTitle, styles.previewTitleDot]}>!</Text>
           </View>
 
           <View style={{ flex: 1 }}>
@@ -142,6 +155,7 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
               ocrResult={ocrResult}
               isLoadingOcr={isLoadingOcr}
               searchTerm={searchTerm}
+              analysisResult={analysisResult}
             />
           </View>
 
@@ -168,6 +182,7 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
                   setTextFieldValue(text);
                   setSearchTerm(text);
                 }}
+                returnKeyType="search"
               />
               <TouchableOpacity
                 style={styles.clearButton}
