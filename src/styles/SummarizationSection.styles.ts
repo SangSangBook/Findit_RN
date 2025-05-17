@@ -3,7 +3,7 @@ import { StyleSheet } from 'react-native';
 export const summarizationSectionStyles = StyleSheet.create({
   container: {
     width: '100%',
-    paddingHorizontal: 36,
+    paddingHorizontal: 20,
     backgroundColor: '#fff',
     alignSelf: 'center',
   },
@@ -15,13 +15,27 @@ export const summarizationSectionStyles = StyleSheet.create({
     textAlign: 'left',
     color: '#222222',
   },
-  input: {
-    fontFamily: 'PretendardMedium',
-    paddingVertical: 10,
-    marginBottom: 10,
-    minHeight: 18,
-    fontSize: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eeeeee',
+  textFieldWrapper: {
+    width: '100%',
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  textFieldContainerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+  },
+  textInput: {
+    flex: 1,
+    height: 40,
+    fontSize: 16,
+    color: '#000',
+    paddingRight: 32,
+  },
+  clearButton: {
+    position: 'absolute',
+    right: 0,
+    padding: 4,
   },
 }); 
