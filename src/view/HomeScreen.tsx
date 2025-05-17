@@ -880,17 +880,19 @@ const HomeScreen = () => {
 
   const analyzeImage = async (imageUri: string): Promise<AnalysisResult | null> => {
     try {
-      // Get image dimensions
-      Image.getSize(imageUri, (width, height) => {
-        setImageDimensions({ width, height });
-      });
+      // 이미지 크기 가져오기
+      const imageInfo = await ImageManipulator.manipulateAsync(
+        imageUri,
+        [],
+        { compress: 1, format: ImageManipulator.SaveFormat.JPEG }
+      );
 
-      // Convert image to base64
+      // 이미지를 base64로 변환
       const base64Image = await FileSystem.readAsStringAsync(imageUri, {
         encoding: FileSystem.EncodingType.Base64,
       });
 
-      // Prepare request body with enhanced features
+      // Google Cloud Vision API 요청 본문 준비
       const requestBody = {
         requests: [
           {
@@ -898,182 +900,93 @@ const HomeScreen = () => {
               content: base64Image,
             },
             features: [
-              {
-                type: 'TEXT_DETECTION',
-                maxResults: 50,
-              },
-              {
-                type: 'OBJECT_LOCALIZATION',
-                maxResults: 50,
-              },
-              {
-                type: 'LABEL_DETECTION',
-                maxResults: 50,
-              },
-              {
-                type: 'FACE_DETECTION',
-                maxResults: 10,
-              },
-              {
-                type: 'LANDMARK_DETECTION',
-                maxResults: 10,
-              },
-              {
-                type: 'LOGO_DETECTION',
-                maxResults: 10,
-              },
-              {
-                type: 'SAFE_SEARCH_DETECTION',
-              },
-              {
-                type: 'IMAGE_PROPERTIES',
-              },
-              {
-                type: 'WEB_DETECTION',
-                maxResults: 10,
-              }
+              { type: 'TEXT_DETECTION' },
+              { type: 'OBJECT_LOCALIZATION' },
+              { type: 'FACE_DETECTION' },
+              { type: 'LANDMARK_DETECTION' },
+              { type: 'LOGO_DETECTION' },
+              { type: 'SAFE_SEARCH_DETECTION' },
+              { type: 'IMAGE_PROPERTIES' },
+              { type: 'WEB_DETECTION' },
             ],
           },
         ],
       };
 
-      // Make API request with timeout
+      // API 요청 타임아웃 설정
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30초 타임아웃
 
-      try {
-        const response = await fetch(
-          `https://vision.googleapis.com/v1/images:annotate?key=${GOOGLE_CLOUD_VISION_API_KEY}`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestBody),
-            signal: controller.signal,
-          }
-        );
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(`API Error: ${errorData.error?.message || response.statusText}`);
+      // Google Cloud Vision API 호출
+      const response = await fetch(
+        `https://vision.googleapis.com/v1/images:annotate?key=${GOOGLE_CLOUD_VISION_API_KEY}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+          signal: controller.signal,
         }
+      );
 
-        const data = await response.json();
+      clearTimeout(timeoutId);
 
-        if (data.error) {
-          throw new Error(data.error.message);
-        }
+      if (!response.ok) {
+        console.log('Google Vision API 응답 오류:', response.status);
+        return null;
+      }
 
-        const responseData = data.responses[0];
+      const data = await response.json();
+      const result = data.responses[0];
 
-        // Process text detection results
-        const textAnnotations = responseData.textAnnotations || [];
-        const fullText = textAnnotations[0]?.description || '';
-
-        // Process object detection results
-        const objects = responseData.localizedObjectAnnotations || [];
-        const labels = responseData.labelAnnotations || [];
-
-        // Process face detection results
-        const faces = responseData.faceAnnotations || [];
-        const faceInfo = faces.map((face: any) => ({
+      // 결과 처리
+      const analysisResult: AnalysisResult = {
+        text: result.textAnnotations?.[0]?.description || '',
+        objects: result.localizedObjectAnnotations?.map((obj: any) => ({
+          name: obj.name,
+          confidence: obj.score,
+          boundingBox: obj.boundingPoly.normalizedVertices,
+        })) || [],
+        labels: result.labelAnnotations?.map((label: any) => ({
+          description: label.description,
+          confidence: label.score,
+        })) || [],
+        faces: result.faceAnnotations?.map((face: any) => ({
           joyLikelihood: face.joyLikelihood,
           sorrowLikelihood: face.sorrowLikelihood,
           angerLikelihood: face.angerLikelihood,
           surpriseLikelihood: face.surpriseLikelihood,
-          underExposedLikelihood: face.underExposedLikelihood,
-          blurredLikelihood: face.blurredLikelihood,
-          headwearLikelihood: face.headwearLikelihood,
-        }));
-
-        // Process landmark detection results
-        const landmarks = responseData.landmarkAnnotations || [];
-        const landmarkInfo = landmarks.map((landmark: any) => ({
+          boundingBox: face.boundingPoly.vertices,
+        })) || [],
+        landmarks: result.landmarkAnnotations?.map((landmark: any) => ({
           description: landmark.description,
-          score: landmark.score,
-          locations: landmark.locations,
-        }));
-
-        // Process logo detection results
-        const logos = responseData.logoAnnotations || [];
-        const logoInfo = logos.map((logo: any) => ({
+          confidence: landmark.score,
+          boundingBox: landmark.boundingPoly.vertices,
+        })) || [],
+        logos: result.logoAnnotations?.map((logo: any) => ({
           description: logo.description,
-          score: logo.score,
-        }));
+          confidence: logo.score,
+          boundingBox: logo.boundingPoly.vertices,
+        })) || [],
+        safeSearch: result.safeSearchAnnotation || null,
+        colors: result.imagePropertiesAnnotation?.dominantColors?.colors?.map((color: any) => ({
+          color: color.color,
+          score: color.score,
+          pixelFraction: color.pixelFraction,
+        })) || [],
+        webEntities: result.webDetection?.webEntities?.map((entity: any) => ({
+          description: entity.description,
+          score: entity.score,
+        })) || [],
+        similarImages: result.webDetection?.visuallySimilarImages?.map((image: any) => ({
+          url: image.url,
+        })) || [],
+      };
 
-        // Process safe search detection results
-        const safeSearch = responseData.safeSearchAnnotation || {};
-        const safeSearchInfo = {
-          adult: safeSearch.adult,
-          spoof: safeSearch.spoof,
-          medical: safeSearch.medical,
-          violence: safeSearch.violence,
-          racy: safeSearch.racy,
-        };
-
-        // Process image properties
-        const imageProperties = responseData.imagePropertiesAnnotation || {};
-        const dominantColors = imageProperties.dominantColors?.colors || [];
-
-        // Process web detection results
-        const webDetection = responseData.webDetection || {};
-        const webEntities = webDetection.webEntities || [];
-        const similarImages = webDetection.visuallySimilarImages || [];
-
-        // Combine all results
-        const result: AnalysisResult = {
-          text: fullText,
-          objects: objects.map((obj: any) => ({
-            name: obj.name,
-            confidence: obj.score,
-            boundingBox: obj.boundingPoly.normalizedVertices,
-          })),
-          labels: labels.map((label: any) => ({
-            description: label.description,
-            confidence: label.score,
-          })),
-          faces: faceInfo,
-          landmarks: landmarkInfo,
-          logos: logoInfo,
-          safeSearch: safeSearchInfo,
-          colors: dominantColors.map((color: any) => ({
-            color: color.color,
-            score: color.score,
-            pixelFraction: color.pixelFraction,
-          })),
-          webEntities: webEntities.map((entity: any) => ({
-            description: entity.description,
-            score: entity.score,
-          })),
-          similarImages: similarImages.map((image: any) => ({
-            url: image.url,
-            score: image.score,
-          })),
-        };
-
-        return result;
-      } catch (fetchError) {
-        clearTimeout(timeoutId);
-        throw fetchError;
-      }
-    } catch (err) {
-      console.error('Error analyzing image:', err);
-      if (err instanceof Error) {
-        if (err.name === 'AbortError') {
-          setError('이미지 분석 시간이 초과되었습니다. 다시 시도해주세요.');
-        } else if (err.message.includes('API Error')) {
-          setError(`API 오류: ${err.message}`);
-        } else if (err.message.includes('Network request failed')) {
-          setError('네트워크 연결을 확인해주세요.');
-        } else {
-          setError(err.message);
-        }
-      } else {
-        setError('이미지 분석 중 오류가 발생했습니다.');
-      }
+      return analysisResult;
+    } catch (error) {
+      console.log('이미지 분석 중 오류 발생:', error);
       return null;
     }
   };

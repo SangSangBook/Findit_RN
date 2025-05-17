@@ -273,10 +273,10 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
                                 y={0}
                                 width={contained.width}
                                 height={contained.height}
-                                stroke="rgba(70, 184, 118, 0.8)"
+                                stroke="rgba(70, 250, 118, 0.8)"
                                 strokeWidth={4}
                                 strokeDasharray="10,5"
-                                fill="rgba(70, 184, 118, 0.05)"
+                                fill="rgba(70, 250, 118, 0.05)"
                                 rx={8}
                                 ry={8}
                               />
@@ -285,7 +285,7 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
                                 y={20}
                                 fontSize="16"
                                 fontWeight="bold"
-                                fill="rgba(70, 184, 118, 0.9)"
+                                fill="rgba(70, 250, 118, 0.9)"
                                 textAnchor="middle"
                               >
                                 텍스트 발견됨
@@ -313,19 +313,12 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
                                   y={y}
                                   width={width}
                                   height={height}
-                                  stroke="rgba(70, 184, 118, 0.8)"
+                                  stroke="#46B876"
                                   strokeWidth={2}
                                   fill="rgba(70, 184, 118, 0.1)"
+                                  rx={2}
+                                  ry={2}
                                 />
-                                <SvgText
-                                  x={x + width / 2}
-                                  y={y - 5}
-                                  fontSize="12"
-                                  fill="rgba(70, 184, 118, 0.9)"
-                                  textAnchor="middle"
-                                >
-                                  {match.description}
-                                </SvgText>
                               </React.Fragment>
                             );
                           })}
@@ -350,19 +343,12 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
                                   y={y}
                                   width={width}
                                   height={height}
-                                  stroke="rgba(66, 153, 225, 0.8)"
+                                  stroke="#4299E2"
                                   strokeWidth={2}
                                   fill="rgba(66, 153, 225, 0.1)"
+                                  rx={2}
+                                  ry={2}
                                 />
-                                <SvgText
-                                  x={x + width / 2}
-                                  y={y - 5}
-                                  fontSize="12"
-                                  fill="rgba(66, 153, 225, 0.9)"
-                                  textAnchor="middle"
-                                >
-                                  {obj.name} ({(obj.confidence * 100).toFixed(0)}%)
-                                </SvgText>
                               </React.Fragment>
                             );
                           })}
