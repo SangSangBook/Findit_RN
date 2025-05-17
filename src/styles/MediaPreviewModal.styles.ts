@@ -41,7 +41,7 @@ export const getThemedStyles = (isDarkMode: boolean) => {
         flexDirection: 'row',
       },
       previewTitle: {
-        fontFamily: 'PretendardSemiBold',
+        fontFamily: 'YdestreetB',
         fontSize: 22,
         color: '#222222',
         marginBottom: 10,

@@ -145,8 +145,8 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
         
         <View style={styles.bottomSheetContent}>
           <View style={styles.previewTitleContainer}>
-            <Text style={styles.previewTitle}>글자 찾기</Text>
-            <Text style={[styles.previewTitle, styles.previewTitleDot]}> .</Text>
+            <Text style={styles.previewTitle}>Find it</Text>
+            <Text style={[styles.previewTitle, styles.previewTitleDot]}>!</Text>
           </View>
 
           <View style={{ flex: 1 }}>
