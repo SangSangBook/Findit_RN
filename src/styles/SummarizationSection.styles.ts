@@ -22,8 +22,6 @@ export const summarizationSectionStyles = StyleSheet.create({
   textFieldContainerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#efefef',
     paddingBottom: 8,
   },
   textInput: {
