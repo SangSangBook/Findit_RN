@@ -1,22 +1,39 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import type { TaskSuggestion } from '../api/openaiApi';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { TaskSuggestion } from '../api/openaiApi';
 
 interface TaskSuggestionListProps {
   suggestions: TaskSuggestion[];
+  onTaskSelect: (task: TaskSuggestion) => void;
 }
 
-const TaskSuggestionList: React.FC<TaskSuggestionListProps> = ({ suggestions }) => {
+const TaskSuggestionList: React.FC<TaskSuggestionListProps> = ({ 
+  suggestions, 
+  onTaskSelect 
+}) => {
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high':
-        return '#ff4444';
+        return '#FF4444';
       case 'medium':
-        return '#ffbb33';
+        return '#FFBB33';
       case 'low':
         return '#00C851';
       default:
-        return '#666666';
+        return '#757575';
+    }
+  };
+
+  const getPriorityText = (priority: string) => {
+    switch (priority) {
+      case 'high':
+        return '긴급';
+      case 'medium':
+        return '중요';
+      case 'low':
+        return '보통';
+      default:
+        return priority;
     }
   };
 
@@ -28,13 +45,24 @@ const TaskSuggestionList: React.FC<TaskSuggestionListProps> = ({ suggestions }) 
     <View style={styles.container}>
       <Text style={styles.title}>제안된 작업</Text>
       {suggestions.map((suggestion, index) => (
-        <View key={index} style={styles.taskItem}>
-          <View style={[styles.priorityIndicator, { backgroundColor: getPriorityColor(suggestion.priority) }]} />
-          <View style={styles.taskContent}>
+        <TouchableOpacity 
+          key={index}
+          onPress={() => onTaskSelect(suggestion)}
+          style={styles.taskItem}
+        >
+          <View style={styles.taskHeader}>
             <Text style={styles.taskTitle}>{suggestion.task}</Text>
-            <Text style={styles.taskDescription}>{suggestion.description}</Text>
+            <View style={[
+              styles.priorityBadge,
+              { backgroundColor: getPriorityColor(suggestion.priority) }
+            ]}>
+              <Text style={styles.priorityText}>
+                {getPriorityText(suggestion.priority)}
+              </Text>
+            </View>
           </View>
-        </View>
+          <Text style={styles.taskDescription}>{suggestion.description}</Text>
+        </TouchableOpacity>
       ))}
     </View>
   );
@@ -62,25 +90,41 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   taskItem: {
-    flexDirection: 'row',
-    marginBottom: 12,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#FFFFFF',
     borderRadius: 8,
-    padding: 12,
+    padding: 15,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
   },
-  priorityIndicator: {
-    width: 4,
-    marginRight: 12,
-    borderRadius: 2,
-  },
-  taskContent: {
-    flex: 1,
+  taskHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   taskTitle: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 4,
     color: '#333',
+    flex: 1,
+  },
+  priorityBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginLeft: 8,
+  },
+  priorityText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '500',
   },
   taskDescription: {
     fontSize: 14,

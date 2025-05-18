@@ -311,6 +311,8 @@ export default function HomeScreen() {
   const [imageTypes, setImageTypes] = useState<ImageTypeState>({});
   const [fadeAnim] = useState(new Animated.Value(0));
   const [taskSuggestions, setTaskSuggestions] = useState<TaskSuggestion[]>([]);
+  const [taskDetails, setTaskDetails] = useState<string>('');
+  const [showTaskDetails, setShowTaskDetails] = useState<boolean>(false);
 
   const handleTypeChange = (uri: string, newType: ImageType) => {
     setImageTypes(prev => ({ ...prev, [uri]: newType }));
@@ -658,6 +660,8 @@ export default function HomeScreen() {
       delete updatedResults[uri];
       return updatedResults;
     });
+    // 이미지가 삭제되면 작업 제안 목록도 초기화
+    setTaskSuggestions([]);
   };
 
   const handleMediaPreview = (media: ImagePickerAsset) => {
@@ -674,6 +678,16 @@ export default function HomeScreen() {
       }).start();
     }
   }, [infoResult]);
+
+  const handleTaskSelect = async (task: TaskSuggestion) => {
+    try {
+      // 선택된 작업의 텍스트를 questionText에 설정
+      setQuestionText(task.task);
+    } catch (error) {
+      console.error('Task selection error:', error);
+      Alert.alert('오류', '작업 선택 중 오류가 발생했습니다.');
+    }
+  };
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -768,7 +782,12 @@ export default function HomeScreen() {
           )}
 
           {/* Task Suggestions */}
-          <TaskSuggestionList suggestions={taskSuggestions} />
+          {taskSuggestions.length > 0 && (
+            <TaskSuggestionList 
+              suggestions={taskSuggestions} 
+              onTaskSelect={handleTaskSelect}
+            />
+          )}
 
           <TouchableOpacity 
             style={[

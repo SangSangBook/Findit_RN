@@ -14,8 +14,8 @@ const openai = new OpenAI({
  * @param text 요약할 텍스트입니다.
  * @returns 요약된 텍스트 또는 오류 메시지를 반환하는 Promise 객체입니다.
  */
-export const getInfoFromTextWithOpenAI = async (text: string): Promise<string | null> => {
-  if (!text.trim()) {
+export const getInfoFromTextWithOpenAI = async (text: string | null): Promise<string> => {
+  if (!text) {
     return '정보를 추출할 텍스트가 제공되지 않았습니다.';
   }
   try {
@@ -57,8 +57,8 @@ export const getInfoFromTextWithOpenAI = async (text: string): Promise<string | 
         },
         { role: 'user', content: text },
       ],
-      max_tokens: 500, // 더 풍부한 응답을 위해 토큰 수 증가
-      temperature: 0.7, // 창의성을 높이기 위해 temperature 값 증가
+      max_tokens: 500,
+      temperature: 0.7,
     });
 
     const information = completion.choices[0]?.message?.content;
@@ -176,5 +176,46 @@ export const suggestTasksFromOcr = async (ocrText: string | null): Promise<TaskS
   } catch (error) {
     console.error('Task suggestion error:', error);
     return [];
+  }
+};
+
+/**
+ * 선택된 작업에 대한 상세 정보를 요청합니다.
+ * @param task 선택된 작업 정보
+ * @param ocrText 원본 OCR 텍스트
+ * @returns 작업에 대한 상세 정보
+ */
+export const getTaskDetails = async (
+  task: TaskSuggestion,
+  ocrText: string | null
+): Promise<string> => {
+  try {
+    if (!ocrText) {
+      return '원본 텍스트가 없어 상세 정보를 제공할 수 없습니다.';
+    }
+
+    const prompt = `
+      다음은 이미지에서 추출한 텍스트와 선택된 작업입니다.
+      이 작업에 대해 더 자세한 정보를 제공해주세요.
+      
+      선택된 작업:
+      - 제목: ${task.task}
+      - 설명: ${task.description}
+      - 우선순위: ${task.priority}
+      
+      원본 텍스트:
+      ${ocrText}
+
+      위 정보를 바탕으로 다음 사항들을 포함하여 자세히 설명해주세요:
+      1. 이 작업이 왜 중요한지
+      2. 이 작업을 수행하기 위한 구체적인 단계
+      3. 이 작업과 관련된 주의사항이나 팁
+      4. 이 작업을 완료하기 위한 예상 소요 시간
+    `;
+
+    return await getInfoFromTextWithOpenAI(prompt);
+  } catch (error) {
+    console.error('Task details error:', error);
+    return '작업 상세 정보를 가져오는 중 오류가 발생했습니다.';
   }
 };
