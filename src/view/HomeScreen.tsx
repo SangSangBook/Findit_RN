@@ -21,11 +21,12 @@ import {
 import Markdown from 'react-native-markdown-display';
 import type { OcrResult } from '../api/googleVisionApi';
 import { ocrWithGoogleVision } from '../api/googleVisionApi';
-import { getInfoFromTextWithOpenAI } from '../api/openaiApi';
+import { getInfoFromTextWithOpenAI, suggestTasksFromOcr, TaskSuggestion } from '../api/openaiApi';
 import { extractTextFromVideo } from '../api/videoOcrApi';
 import ImageTypeSelector from '../components/ImageTypeSelector';
 import MediaPreviewModal from '../components/MediaPreviewModal';
 import SummarizationSection from '../components/SummarizationSection';
+import TaskSuggestionSection from '../components/TaskSuggestionSection';
 import VideoPreview from '../components/VideoPreview';
 import { ImageType } from '../constants/ImageTypes';
 import { homeScreenStyles as styles } from '../styles/HomeScreen.styles';
@@ -366,6 +367,7 @@ const HomeScreen = () => {
   const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [taskSuggestions, setTaskSuggestions] = useState<TaskSuggestion[]>([]);
 
   const handleTypeChange = (uri: string, newType: ImageType) => {
     setImageTypes(prev => ({ ...prev, [uri]: newType }));
@@ -748,6 +750,11 @@ const HomeScreen = () => {
               analysisText += `[${result.time/1000}초] ${result.text}\n`;
             });
             analysisText += '\n';
+
+            // 비디오 OCR 결과를 바탕으로 작업 제안 생성
+            const combinedText = results.map(result => result.text).join('\n');
+            const suggestions = await suggestTasksFromOcr(combinedText);
+            setTaskSuggestions(suggestions);
           } else {
             analysisText += '[비디오에서 텍스트를 찾을 수 없습니다.]\n\n';
           }
@@ -760,6 +767,12 @@ const HomeScreen = () => {
         const analysisResult = await analyzeImage(selectedMedia.uri);
         if (!analysisResult) {
           throw new Error('이미지 분석에 실패했습니다.');
+        }
+
+        // OCR 결과를 바탕으로 작업 제안 생성
+        if (analysisResult.text) {
+          const suggestions = await suggestTasksFromOcr(analysisResult.text);
+          setTaskSuggestions(suggestions);
         }
 
         // 물체 감지 결과를 기반으로 문서 유형 추정
@@ -1028,6 +1041,8 @@ const HomeScreen = () => {
       delete newTypes[uri];
       return newTypes;
     });
+    // 이미지 삭제 시 task 제안 리스트 초기화
+    setTaskSuggestions([]);
   };
 
   const openPreview = (mediaAsset: ImagePickerAsset) => {
@@ -1046,6 +1061,13 @@ const HomeScreen = () => {
       duration: 300,
       useNativeDriver: false,
     }).start();
+  };
+
+  const handleTaskSelect = (task: TaskSuggestion) => {
+    // 선택된 작업의 내용을 questionText에 설정
+    setQuestionText(task.task);
+    // 작업 선택 시 자동으로 정보 가져오기 실행
+    handleGetInfo();
   };
 
   return (
@@ -1161,6 +1183,11 @@ const HomeScreen = () => {
             </Text>
           )}
         </TouchableOpacity>
+
+        <TaskSuggestionSection
+          suggestions={taskSuggestions}
+          onTaskSelect={handleTaskSelect}
+        />
 
         {/* Answer Display */}
         {isFetchingInfo ? (

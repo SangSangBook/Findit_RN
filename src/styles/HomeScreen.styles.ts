@@ -411,4 +411,60 @@ export const homeScreenStyles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
   },
+  // Task Suggestions Styles
+  taskSuggestionsContainer: {
+    marginTop: 20,
+    marginHorizontal: 36,
+    padding: 15,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 16,
+  },
+  taskSuggestionsTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    color: '#333',
+  },
+  taskSuggestionItem: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 15,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  taskSuggestionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  taskSuggestionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    flex: 1,
+  },
+  priorityBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginLeft: 8,
+  },
+  priorityText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  taskSuggestionDescription: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+  },
 });
