@@ -473,7 +473,7 @@ export const homeScreenStyles = StyleSheet.create({
   },
   imageSelectorItem: {
     marginRight: 12,
-    borderRadius: 8,
+    borderRadius: 12,
     overflow: 'hidden',
     borderWidth: 2,
     borderColor: 'transparent',
