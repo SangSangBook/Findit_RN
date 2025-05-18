@@ -6,25 +6,28 @@ import type { ImagePickerAsset } from 'expo-image-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useState } from 'react';
 import {
-    ActionSheetIOS,
-    Alert,
-    Animated,
-    Appearance,
-    Image,
-    Platform,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View
+  ActionSheetIOS,
+  Alert,
+  Animated,
+  Appearance,
+  Image,
+  Keyboard,
+  Platform,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
 import Markdown from 'react-native-markdown-display';
 import type { OcrResult } from '../api/googleVisionApi';
 import { ocrWithGoogleVision } from '../api/googleVisionApi';
-import { getInfoFromTextWithOpenAI } from '../api/openaiApi';
+import { getInfoFromTextWithOpenAI, suggestTasksFromOcr, type TaskSuggestion } from '../api/openaiApi';
 import { extractTextFromVideo } from '../api/videoOcrApi';
 import ImageTypeSelector from '../components/ImageTypeSelector';
 import MediaPreviewModal from '../components/MediaPreviewModal'; // 새로 추가
 import SummarizationSection from '../components/SummarizationSection';
+import TaskSuggestionList from '../components/TaskSuggestionList';
 import VideoPreview from '../components/VideoPreview';
 import { IMAGE_TYPE_PROMPTS, ImageType } from '../constants/ImageTypes';
 import { homeScreenStyles as styles } from '../styles/HomeScreen.styles';
@@ -307,6 +310,7 @@ export default function HomeScreen() {
   const [assetUriMap, setAssetUriMap] = useState<{ [internalUri: string]: string | undefined }>({});
   const [imageTypes, setImageTypes] = useState<ImageTypeState>({});
   const [fadeAnim] = useState(new Animated.Value(0));
+  const [taskSuggestions, setTaskSuggestions] = useState<TaskSuggestion[]>([]);
 
   const handleTypeChange = (uri: string, newType: ImageType) => {
     setImageTypes(prev => ({ ...prev, [uri]: newType }));
@@ -325,14 +329,20 @@ export default function HomeScreen() {
         setOcrResults(prevResults => ({ ...prevResults, [imageUri]: ocrResult }));
         const detectedType = detectImageType(ocrResult.fullText);
         setImageTypes(prev => ({ ...prev, [imageUri]: detectedType }));
+        
+        // OCR 결과를 바탕으로 task 제안 요청
+        const suggestions = await suggestTasksFromOcr(ocrResult.fullText);
+        setTaskSuggestions(suggestions);
       } else {
         setOcrResults(prevResults => ({ ...prevResults, [imageUri]: null }));
         setImageTypes(prev => ({ ...prev, [imageUri]: 'OTHER' }));
+        setTaskSuggestions([]);
       }
     } catch (error) {
       console.error(`이미지 OCR 오류 (${imageUri}):`, error);
       setOcrResults(prevResults => ({ ...prevResults, [imageUri]: null }));
       setImageTypes(prev => ({ ...prev, [imageUri]: 'OTHER' }));
+      setTaskSuggestions([]);
     } finally {
       setIsLoadingOcr(prev => ({ ...prev, [imageUri]: false }));
     }
@@ -666,143 +676,148 @@ export default function HomeScreen() {
   }, [infoResult]);
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.contentContainer}
-      keyboardShouldPersistTaps="handled"
-    >
-      <BlurView intensity={20} style={styles.header}>
-        <View style={styles.headerTextContainer}>
-          <Text style={styles.title}>Findit!</Text>
-          <Text style={styles.subtitle}>
-            미디어에서{'\n'}
-            정보를{'\n'}
-            찾아보세요<Text style={{ color: '#46B876' }}>.</Text>{'\n'}
-          </Text>
-        </View>
-      </BlurView>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.contentContainer}
+        keyboardShouldPersistTaps="handled"
+      >
+        <BlurView intensity={20} style={styles.header}>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.title}>Findit!</Text>
+            <Text style={styles.subtitle}>
+              미디어에서{'\n'}
+              정보를{'\n'}
+              찾아보세요<Text style={{ color: '#46B876' }}>.</Text>{'\n'}
+            </Text>
+          </View>
+        </BlurView>
 
-      <View style={styles.summarySection}>
-        <SummarizationSection
-          questionText={questionText}
-          setQuestionText={setQuestionText}
-        />
-        
-        {selectedImages.length > 0 && (
-          <View style={styles.imagesSection}>
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.imagesScrollContainer}
-            >
-              {selectedImages.map((media) => (
-                <View key={media.assetId || media.uri} style={styles.imageWrapper}>
-                  {media.type === 'video' ? (
-                    <VideoPreview
-                      videoUri={media.uri}
-                      onPress={() => handleMediaPreview(media)}
-                    />
-                  ) : (
-                    <TouchableOpacity
-                      onPress={() => handleMediaPreview(media)}
-                      style={styles.imageTouchable}
-                    >
-                      {isLoadingOcr[media.uri] ? (
-                        <BlurView intensity={90} style={styles.imageThumbnail}>
+        <View style={styles.summarySection}>
+          <SummarizationSection
+            questionText={questionText}
+            setQuestionText={setQuestionText}
+          />
+          
+          {selectedImages.length > 0 && (
+            <View style={styles.imagesSection}>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.imagesScrollContainer}
+              >
+                {selectedImages.map((media) => (
+                  <View key={media.assetId || media.uri} style={styles.imageWrapper}>
+                    {media.type === 'video' ? (
+                      <VideoPreview
+                        videoUri={media.uri}
+                        onPress={() => handleMediaPreview(media)}
+                      />
+                    ) : (
+                      <TouchableOpacity
+                        onPress={() => handleMediaPreview(media)}
+                        style={styles.imageTouchable}
+                      >
+                        {isLoadingOcr[media.uri] ? (
+                          <BlurView intensity={90} style={styles.imageThumbnail}>
+                            <Image 
+                              source={{ uri: media.uri }} 
+                              style={styles.imageThumbnail}
+                              resizeMode="cover"
+                            />
+                          </BlurView>
+                        ) : (
                           <Image 
                             source={{ uri: media.uri }} 
                             style={styles.imageThumbnail}
                             resizeMode="cover"
                           />
-                        </BlurView>
-                      ) : (
-                        <Image 
-                          source={{ uri: media.uri }} 
-                          style={styles.imageThumbnail}
-                          resizeMode="cover"
-                        />
-                      )}
-                      {isLoadingOcr[media.uri] && (
-                        <OcrLoadingAnimation />
-                      )}
+                        )}
+                        {isLoadingOcr[media.uri] && (
+                          <OcrLoadingAnimation />
+                        )}
+                      </TouchableOpacity>
+                    )}
+                    <TouchableOpacity
+                      style={styles.deleteButton}
+                      onPress={() => removeImage(media.uri)}
+                    >
+                      <MaterialIcons name="close" size={20} color="#fff" />
                     </TouchableOpacity>
-                  )}
-                  <TouchableOpacity
-                    style={styles.deleteButton}
-                    onPress={() => removeImage(media.uri)}
-                  >
-                    <MaterialIcons name="close" size={20} color="#fff" />
-                  </TouchableOpacity>
-                  <View style={{ marginTop: 12 }}>
-                    <ImageTypeSelector 
-                      uri={media.uri} 
-                      currentType={imageTypes[media.uri] || 'OTHER'} 
-                      onTypeChange={handleTypeChange} 
-                    />
+                    <View style={{ marginTop: 12 }}>
+                      <ImageTypeSelector 
+                        uri={media.uri} 
+                        currentType={imageTypes[media.uri] || 'OTHER'} 
+                        onTypeChange={handleTypeChange} 
+                      />
+                    </View>
                   </View>
-                </View>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-        
-        {selectedImages.length === 0 && (
-          <TouchableOpacity
-            style={styles.imageUploadButton}
-            onPress={showMediaOptions}
-          >
-            <MaterialIcons name="add" size={48} color="#8e8e8e" />
-            <Text style={styles.imageUploadButtonText}>미디어 업로드</Text>
-          </TouchableOpacity>
-        )}
-
-        <TouchableOpacity 
-          style={[
-            styles.getInfoButton, 
-            !questionText.trim() && styles.getInfoButtonDisabled
-          ]} 
-          onPress={handleGetInfo}
-          disabled={!questionText.trim() || isFetchingInfo}
-        >
-          {isFetchingInfo ? (
-            <LoadingWave />
-          ) : (
-            <Text style={[
-              styles.getInfoButtonText,
-              !questionText.trim() && styles.getInfoButtonTextDisabled
-            ]}>
-              이미지 정보 가져오기
-            </Text>
-          )}
-        </TouchableOpacity>
-
-        {/* 답변 표시 영역 */}
-        {isFetchingInfo ? (
-          <AnswerLoadingSkeleton />
-        ) : infoResult && (
-          <View>
-            <Text style={styles.infoContainerTitle}>이미지 분석 결과</Text>
-            <View style={styles.infoResultContainer}>
-              <ScrollView style={styles.infoResultScrollView}>
-                <Markdown style={markdownStyles}>
-                  {infoResult}
-                </Markdown>
+                ))}
               </ScrollView>
             </View>
-          </View>
-        )}
-      </View>
+          )}
+          
+          {selectedImages.length === 0 && (
+            <TouchableOpacity
+              style={styles.imageUploadButton}
+              onPress={showMediaOptions}
+            >
+              <MaterialIcons name="add" size={48} color="#8e8e8e" />
+              <Text style={styles.imageUploadButtonText}>미디어 업로드</Text>
+            </TouchableOpacity>
+          )}
 
-      <MediaPreviewModal
-        visible={!!previewMediaAsset}
-        onClose={closePreview}
-        mediaAsset={previewMediaAsset}
-        ocrResult={ocrResults[previewMediaAsset?.uri || '']}
-        isLoadingOcr={isLoadingOcr[previewMediaAsset?.uri || '']}
-        colorScheme={colorScheme}
-      >
-        <Text>이미지 유형: {imageTypes[previewMediaAsset?.uri || ''] || '기타'}</Text>
-      </MediaPreviewModal>
-    </ScrollView>
+          {/* Task Suggestions */}
+          <TaskSuggestionList suggestions={taskSuggestions} />
+
+          <TouchableOpacity 
+            style={[
+              styles.getInfoButton, 
+              !questionText.trim() && styles.getInfoButtonDisabled
+            ]} 
+            onPress={handleGetInfo}
+            disabled={!questionText.trim() || isFetchingInfo}
+          >
+            {isFetchingInfo ? (
+              <LoadingWave />
+            ) : (
+              <Text style={[
+                styles.getInfoButtonText,
+                !questionText.trim() && styles.getInfoButtonTextDisabled
+              ]}>
+                이미지 정보 가져오기
+              </Text>
+            )}
+          </TouchableOpacity>
+
+          {/* 답변 표시 영역 */}
+          {isFetchingInfo ? (
+            <AnswerLoadingSkeleton />
+          ) : infoResult && (
+            <View>
+              <Text style={styles.infoContainerTitle}>이미지 분석 결과</Text>
+              <View style={styles.infoResultContainer}>
+                <ScrollView style={styles.infoResultScrollView}>
+                  <Markdown style={markdownStyles}>
+                    {infoResult}
+                  </Markdown>
+                </ScrollView>
+              </View>
+            </View>
+          )}
+        </View>
+
+        <MediaPreviewModal
+          visible={!!previewMediaAsset}
+          onClose={closePreview}
+          mediaAsset={previewMediaAsset}
+          ocrResult={ocrResults[previewMediaAsset?.uri || '']}
+          isLoadingOcr={isLoadingOcr[previewMediaAsset?.uri || '']}
+          colorScheme={colorScheme}
+        >
+          <Text>이미지 유형: {imageTypes[previewMediaAsset?.uri || ''] || '기타'}</Text>
+        </MediaPreviewModal>
+      </ScrollView>
+    </TouchableWithoutFeedback>
   );
 }
