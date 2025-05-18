@@ -26,7 +26,7 @@ import { extractTextFromVideo } from '../api/videoOcrApi';
 import ImageTypeSelector from '../components/ImageTypeSelector';
 import MediaPreviewModal from '../components/MediaPreviewModal';
 import SummarizationSection from '../components/SummarizationSection';
-import TaskSuggestionSection from '../components/TaskSuggestionSection';
+import TaskSuggestionList from '../components/TaskSuggestionList';
 import VideoPreview from '../components/VideoPreview';
 import { ImageType } from '../constants/ImageTypes';
 import { homeScreenStyles as styles } from '../styles/HomeScreen.styles';
@@ -369,6 +369,11 @@ const HomeScreen = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [taskSuggestions, setTaskSuggestions] = useState<TaskSuggestion[]>([]);
 
+  // 디버깅을 위한 useEffect 추가
+  useEffect(() => {
+    console.log('Task suggestions updated:', taskSuggestions);
+  }, [taskSuggestions]);
+
   const handleTypeChange = (uri: string, newType: ImageType) => {
     setImageTypes(prev => ({ ...prev, [uri]: newType }));
   };
@@ -547,6 +552,12 @@ const HomeScreen = () => {
                 if (analysisResult.text) {
                   console.log('\n[텍스트 분석 결과]');
                   console.log(analysisResult.text);
+                  
+                  // OCR 결과로 task 제안 생성
+                  const suggestions = await suggestTasksFromOcr(analysisResult.text);
+                  if (suggestions && suggestions.length > 0) {
+                    setTaskSuggestions(suggestions);
+                  }
                 }
 
                 if (analysisResult.objects.length > 0) {
@@ -665,6 +676,12 @@ const HomeScreen = () => {
             if (analysisResult.text) {
               console.log('\n[텍스트 분석 결과]');
               console.log(analysisResult.text);
+              
+              // OCR 결과로 task 제안 생성
+              const suggestions = await suggestTasksFromOcr(analysisResult.text);
+              if (suggestions && suggestions.length > 0) {
+                setTaskSuggestions(suggestions);
+              }
             }
 
             if (analysisResult.objects.length > 0) {
@@ -750,11 +767,6 @@ const HomeScreen = () => {
               analysisText += `[${result.time/1000}초] ${result.text}\n`;
             });
             analysisText += '\n';
-
-            // 비디오 OCR 결과를 바탕으로 작업 제안 생성
-            const combinedText = results.map(result => result.text).join('\n');
-            const suggestions = await suggestTasksFromOcr(combinedText);
-            setTaskSuggestions(suggestions);
           } else {
             analysisText += '[비디오에서 텍스트를 찾을 수 없습니다.]\n\n';
           }
@@ -769,11 +781,8 @@ const HomeScreen = () => {
           throw new Error('이미지 분석에 실패했습니다.');
         }
 
-        // OCR 결과를 바탕으로 작업 제안 생성
-        if (analysisResult.text) {
-          const suggestions = await suggestTasksFromOcr(analysisResult.text);
-          setTaskSuggestions(suggestions);
-        }
+        console.log('=== Image Analysis Started ===');
+        console.log('Analysis Result:', analysisResult);
 
         // 물체 감지 결과를 기반으로 문서 유형 추정
         const detectedObjects = analysisResult.objects.map(obj => obj.name.toLowerCase());
@@ -830,8 +839,8 @@ const HomeScreen = () => {
             const koreanTranslations = await translateToKorean(obj.name);
             const koreanText = koreanTranslations.length > 0 ? ` (${koreanTranslations.join(', ')})` : '';
             
-            console.log(`- ${obj.name}${koreanText} (신뢰도: ${(obj.confidence * 100).toFixed(1)}%)`);
-            console.log(`  위치: 왼쪽 ${position.left}%, 위 ${position.top}%, 오른쪽 ${position.right}%, 아래 ${position.bottom}%`);
+            analysisText += `- ${obj.name}${koreanText} (신뢰도: ${(obj.confidence * 100).toFixed(1)}%)\n`;
+            analysisText += `  위치: 왼쪽 ${position.left}%, 위 ${position.top}%, 오른쪽 ${position.right}%, 아래 ${position.bottom}%\n`;
           }
           analysisText += '\n';
         }
@@ -1184,10 +1193,19 @@ const HomeScreen = () => {
           )}
         </TouchableOpacity>
 
-        <TaskSuggestionSection
-          suggestions={taskSuggestions}
-          onTaskSelect={handleTaskSelect}
-        />
+        {/* Task Suggestions Section */}
+        {taskSuggestions && taskSuggestions.length > 0 && (
+          <View style={{ marginTop: 20, marginHorizontal: 16 }}>
+            <TaskSuggestionList
+              suggestions={taskSuggestions}
+              onTaskSelect={(task) => {
+                console.log('Task selected:', task);
+                setQuestionText(task.task);
+                handleGetInfo();
+              }}
+            />
+          </View>
+        )}
 
         {/* Answer Display */}
         {isFetchingInfo ? (
