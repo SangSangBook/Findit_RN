@@ -1072,11 +1072,54 @@ const HomeScreen = () => {
     }).start();
   };
 
-  const handleTaskSelect = (task: TaskSuggestion) => {
+  const handleTaskSelect = async (task: TaskSuggestion) => {
     // 선택된 작업의 내용을 questionText에 설정
     setQuestionText(task.task);
-    // 작업 선택 시 자동으로 정보 가져오기 실행
-    handleGetInfo();
+    
+    // 이미지 분석 결과 초기화
+    setInfoResult(null);
+    setIsFetchingInfo(true);
+
+    try {
+      const selectedMedia = selectedImages[0];
+      if (!selectedMedia.uri) {
+        throw new Error('미디어 URI가 없습니다.');
+      }
+
+      let analysisText = '';
+
+      if (selectedMedia.type === 'video') {
+        try {
+          const results = await extractTextFromVideo(selectedMedia.uri, 1);
+          if (results.length > 0) {
+            analysisText = results.map(result => result.text).join('\n');
+          }
+        } catch (error) {
+          console.error('비디오 분석 중 오류:', error);
+        }
+      } else {
+        const analysisResult = await analyzeImage(selectedMedia.uri);
+        if (analysisResult && analysisResult.text) {
+          analysisText = analysisResult.text;
+        }
+      }
+
+      // 선택된 task와 관련된 정보만 가져오기
+      const information = await getInfoFromTextWithOpenAI(`${analysisText}\n\n질문: ${task.task}`);
+      setInfoResult(information);
+
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: false,
+      }).start();
+
+    } catch (error) {
+      console.error('Error processing task:', error);
+      setInfoResult('작업 처리 중 오류가 발생했습니다.');
+    } finally {
+      setIsFetchingInfo(false);
+    }
   };
 
   return (
@@ -1198,11 +1241,7 @@ const HomeScreen = () => {
           <View style={{ marginTop: 20, marginHorizontal: 16 }}>
             <TaskSuggestionList
               suggestions={taskSuggestions}
-              onTaskSelect={(task) => {
-                console.log('Task selected:', task);
-                setQuestionText(task.task);
-                handleGetInfo();
-              }}
+              onTaskSelect={handleTaskSelect}
             />
           </View>
         )}
