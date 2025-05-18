@@ -12,23 +12,20 @@ import {
   Animated,
   Appearance,
   Image,
-  Keyboard,
   Platform,
   ScrollView,
   Text,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View
 } from 'react-native';
 import Markdown from 'react-native-markdown-display';
 import type { OcrResult } from '../api/googleVisionApi';
 import { ocrWithGoogleVision } from '../api/googleVisionApi';
-import { getInfoFromTextWithOpenAI, suggestTasksFromOcr, type TaskSuggestion } from '../api/openaiApi';
+import { getInfoFromTextWithOpenAI } from '../api/openaiApi';
 import { extractTextFromVideo } from '../api/videoOcrApi';
 import ImageTypeSelector from '../components/ImageTypeSelector';
 import MediaPreviewModal from '../components/MediaPreviewModal';
 import SummarizationSection from '../components/SummarizationSection';
-import TaskSuggestionList from '../components/TaskSuggestionList';
 import VideoPreview from '../components/VideoPreview';
 import { ImageType } from '../constants/ImageTypes';
 import { homeScreenStyles as styles } from '../styles/HomeScreen.styles';
@@ -37,10 +34,10 @@ import { translateToKorean } from '../utils/koreanTranslator';
 
 interface SelectedImage {
   uri: string;
-  width: number;
-  height: number;
-  assetId: string | null;
-  type?: 'image' | 'video';
+  width?: number;
+  height?: number;
+  assetId?: string;
+  type?: 'image' | 'video'; 
 }
 
 interface OcrLoadingState {
@@ -341,42 +338,34 @@ const markdownStyles = {
   },
 } as const;
 
-const convertToSelectedImage = (asset: ImagePickerAsset): SelectedImage => ({
-  uri: asset.uri,
-  width: asset.width,
-  height: asset.height,
-  assetId: asset.assetId || null,
-  type: asset.type === 'video' ? 'video' : 'image'
-});
-
 const HomeScreen = () => {
-  const [selectedImages, setSelectedImages] = useState<SelectedImage[]>([]);
-  const [ocrResults, setOcrResults] = useState<{ [key: string]: OcrResult | null }>({});
-  const [isLoadingOcr, setIsLoadingOcr] = useState<OcrLoadingState>({});
-  const [questionText, setQuestionText] = useState('');
-  const [infoResult, setInfoResult] = useState<string | null>(null);
-  const [isFetchingInfo, setIsFetchingInfo] = useState(false);
-  const [previewMediaAsset, setPreviewMediaAsset] = useState<ImagePickerAsset | null>(null);
-  const [imageTypes, setImageTypes] = useState<ImageTypeState>({});
-  const [fadeAnim] = useState(new Animated.Value(0));
-  const [taskSuggestions, setTaskSuggestions] = useState<TaskSuggestion[]>([]);
-  const [taskDetails, setTaskDetails] = useState<string>('');
-  const [showTaskDetails, setShowTaskDetails] = useState<boolean>(false);
-  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [cameraPermissionStatus, setCameraPermissionStatus] = useState<ImagePicker.PermissionStatus | null>(null);
-  const [assetUriMap, setAssetUriMap] = useState<{ [internalUri: string]: string | undefined }>({});
-  const [colorScheme, setColorScheme] = useState<'light' | 'dark'>(Appearance.getColorScheme() as 'light' | 'dark');
-
+  const [colorScheme, setColorScheme] = useState(Appearance.getColorScheme());
+  
   useEffect(() => {
     const subscription = Appearance.addChangeListener(({ colorScheme }) => {
-      setColorScheme(colorScheme as 'light' | 'dark');
+      setColorScheme(colorScheme);
     });
 
     return () => subscription.remove();
   }, []);
+
+  const [selectedImages, setSelectedImages] = useState<ImagePickerAsset[]>([]);
+  const [infoResult, setInfoResult] = useState<string | null>(null);
+  const [ocrResults, setOcrResults] = useState<{[uri: string]: OcrResult | null}>({});
+  const [isLoadingOcr, setIsLoadingOcr] = useState<OcrLoadingState>({});
+  const [questionText, setQuestionText] = useState<string>('');
+  const [previewMediaAsset, setPreviewMediaAsset] = useState<ImagePickerAsset | null>(null);
+  const [isFetchingInfo, setIsFetchingInfo] = useState<boolean>(false);
+  const [cameraPermissionStatus, setCameraPermissionStatus] = useState<ImagePicker.PermissionStatus | null>(null);
+  const [assetUriMap, setAssetUriMap] = useState<{ [internalUri: string]: string | undefined }>({});
+  const [imageTypes, setImageTypes] = useState<ImageTypeState>({});
+  const [fadeAnim] = useState(new Animated.Value(0));
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [selectedObject, setSelectedObject] = useState<number | null>(null);
+  const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
+  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const handleTypeChange = (uri: string, newType: ImageType) => {
     setImageTypes(prev => ({ ...prev, [uri]: newType }));
@@ -395,20 +384,14 @@ const HomeScreen = () => {
         setOcrResults(prevResults => ({ ...prevResults, [imageUri]: ocrResult }));
         const detectedType = detectImageType(ocrResult.fullText);
         setImageTypes(prev => ({ ...prev, [imageUri]: detectedType }));
-        
-        // OCR 결과를 바탕으로 task 제안 요청
-        const suggestions = await suggestTasksFromOcr(ocrResult.fullText);
-        setTaskSuggestions(suggestions);
       } else {
         setOcrResults(prevResults => ({ ...prevResults, [imageUri]: null }));
         setImageTypes(prev => ({ ...prev, [imageUri]: 'OTHER' }));
-        setTaskSuggestions([]);
       }
     } catch (error) {
       console.error(`이미지 OCR 오류 (${imageUri}):`, error);
       setOcrResults(prevResults => ({ ...prevResults, [imageUri]: null }));
       setImageTypes(prev => ({ ...prev, [imageUri]: 'OTHER' }));
-      setTaskSuggestions([]);
     } finally {
       setIsLoadingOcr(prev => ({ ...prev, [imageUri]: false }));
     }
@@ -521,21 +504,39 @@ const HomeScreen = () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.All,
-        allowsEditing: true,
+        allowsMultipleSelection: true,
         quality: 1,
       });
 
-      if (!result.canceled && result.assets.length > 0) {
-        const newImages = result.assets.map(convertToSelectedImage);
-        setSelectedImages(prevImages => [...prevImages, ...newImages]);
+      if (!result.canceled && result.assets) {
+        // 정방향 변환 적용 (이미지에만)
+        const manipulatedAssets = await Promise.all(result.assets.map(async asset => {
+          if (asset.type === 'image' && asset.uri) {
+            const manipulated = await ImageManipulator.manipulateAsync(
+              asset.uri,
+              [], // no-op, just strip EXIF
+              { compress: 1, format: ImageManipulator.SaveFormat.JPEG }
+            );
+            return { ...asset, uri: manipulated.uri };
+          }
+          return asset;
+        }));
 
-        // Process each media file
-        for (const asset of result.assets) {
+        setSelectedImages(prevImages => [...prevImages, ...manipulatedAssets]);
+        const newAssetUriMap = { ...assetUriMap };
+        manipulatedAssets.forEach(asset => {
+          newAssetUriMap[asset.uri] = asset.assetId ?? undefined;
+        });
+        setAssetUriMap(newAssetUriMap);
+
+        // 각 미디어에 대해 OCR 처리
+        for (const asset of manipulatedAssets) {
           if (asset.uri) {
             if (asset.type === 'video') {
               await processVideoWithOCR(asset.uri);
             } else {
               await processImageWithOCR(asset.uri);
+              // 이미지 분석 결과 로깅
               const analysisResult = await analyzeImage(asset.uri);
               if (analysisResult) {
                 console.log('\n=== 이미지 분석 결과 ===');
@@ -555,6 +556,7 @@ const HomeScreen = () => {
                     const maxX = Math.max(...vertices.map(v => v.x));
                     const maxY = Math.max(...vertices.map(v => v.y));
                     
+                    // 위치 정보를 이미지 크기에 대한 상대적 비율로 표시
                     const position = {
                       left: Math.round(minX * 100),
                       top: Math.round(minY * 100),
@@ -562,6 +564,7 @@ const HomeScreen = () => {
                       bottom: Math.round(maxY * 100)
                     };
                     
+                    // 영어 단어를 한글로 번역
                     const koreanTranslations = await translateToKorean(obj.name);
                     const koreanText = koreanTranslations.length > 0 ? ` (${koreanTranslations.join(', ')})` : '';
                     
@@ -596,8 +599,8 @@ const HomeScreen = () => {
         }
       }
     } catch (error) {
-      console.error('Error choosing media:', error);
-      Alert.alert('Error', 'Failed to choose media');
+      console.error('미디어 선택 오류:', error);
+      Alert.alert('오류', '미디어를 선택하는 중 오류가 발생했습니다.');
     }
   };
   
@@ -630,21 +633,32 @@ const HomeScreen = () => {
     try {
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
+        allowsEditing: false,
         quality: 1,
       });
 
-      if (!result.canceled && result.assets.length > 0) {
-        const newImages = result.assets.map(convertToSelectedImage);
-        setSelectedImages(prevImages => [...prevImages, ...newImages]);
+      if (!result.canceled && result.assets) {
+        let newImage = result.assets[0];
+        if (newImage.type === 'image' && newImage.uri) {
+          const manipulated = await ImageManipulator.manipulateAsync(
+            newImage.uri,
+            [], // no-op, just strip EXIF
+            { compress: 1, format: ImageManipulator.SaveFormat.JPEG }
+          );
+          newImage = { ...newImage, uri: manipulated.uri };
+        }
+        setSelectedImages(prevImages => [...prevImages, newImage]);
+        const newAssetUriMap = { ...assetUriMap };
+        newAssetUriMap[newImage.uri] = newImage.assetId ?? undefined;
+        setAssetUriMap(newAssetUriMap);
 
-        const asset = result.assets[0];
-        if (asset.uri) {
-          await processImageWithOCR(asset.uri);
-          const analysisResult = await analyzeImage(asset.uri);
+        if (newImage.uri) {
+          await processImageWithOCR(newImage.uri);
+          // 이미지 분석 결과 로깅
+          const analysisResult = await analyzeImage(newImage.uri);
           if (analysisResult) {
             console.log('\n=== 이미지 분석 결과 ===');
-            console.log('파일:', asset.uri);
+            console.log('파일:', newImage.uri);
             
             if (analysisResult.text) {
               console.log('\n[텍스트 분석 결과]');
@@ -660,6 +674,7 @@ const HomeScreen = () => {
                 const maxX = Math.max(...vertices.map(v => v.x));
                 const maxY = Math.max(...vertices.map(v => v.y));
                 
+                // 위치 정보를 이미지 크기에 대한 상대적 비율로 표시
                 const position = {
                   left: Math.round(minX * 100),
                   top: Math.round(minY * 100),
@@ -667,6 +682,7 @@ const HomeScreen = () => {
                   bottom: Math.round(maxY * 100)
                 };
                 
+                // 영어 단어를 한글로 번역
                 const koreanTranslations = await translateToKorean(obj.name);
                 const koreanText = koreanTranslations.length > 0 ? ` (${koreanTranslations.join(', ')})` : '';
                 
@@ -699,8 +715,8 @@ const HomeScreen = () => {
         }
       }
     } catch (error) {
-      console.error('Error taking photo:', error);
-      Alert.alert('Error', 'Failed to take photo');
+      console.error('사진 촬영 오류:', error);
+      Alert.alert('오류', '사진을 촬영하는 중 오류가 발생했습니다.');
     }
   };
 
@@ -1012,8 +1028,6 @@ const HomeScreen = () => {
       delete newTypes[uri];
       return newTypes;
     });
-    // 이미지가 삭제되면 작업 제안 목록도 초기화
-    setTaskSuggestions([]);
   };
 
   const openPreview = (mediaAsset: ImagePickerAsset) => {
@@ -1034,168 +1048,151 @@ const HomeScreen = () => {
     }).start();
   };
 
-  const handleTaskSelect = async (task: TaskSuggestion) => {
-    try {
-      // 선택된 작업의 텍스트를 questionText에 설정
-      setQuestionText(task.task);
-    } catch (error) {
-      console.error('Task selection error:', error);
-      Alert.alert('오류', '작업 선택 중 오류가 발생했습니다.');
-    }
-  };
-
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.contentContainer}
-        keyboardShouldPersistTaps="handled"
-      >
-        <BlurView intensity={20} style={styles.header}>
-          <View style={styles.headerTextContainer}>
-            <Text style={styles.title}>Findit!</Text>
-            <Text style={styles.subtitle}>
-              미디어에서{'\n'}
-              정보를{'\n'}
-              찾아보세요<Text style={{ color: '#46B876' }}>.</Text>{'\n'}
-            </Text>
-          </View>
-        </BlurView>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.contentContainer}
+      keyboardShouldPersistTaps="handled"
+    >
+      <BlurView intensity={20} style={styles.header}>
+        <View style={styles.headerTextContainer}>
+          <Text style={styles.title}>Findit!</Text>
+          <Text style={styles.subtitle}>
+            미디어에서{'\n'}
+            정보를{'\n'}
+            찾아보세요<Text style={{ color: '#46B876' }}>.</Text>{'\n'}
+          </Text>
+        </View>
+      </BlurView>
 
-        <View style={styles.summarySection}>
-          <SummarizationSection
-            questionText={questionText}
-            setQuestionText={setQuestionText}
-          />
-          
-          {selectedImages.length > 0 && (
-            <View style={styles.imagesSection}>
-              <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.imagesScrollContainer}
-              >
-                {selectedImages.map((media) => (
-                  <View key={media.assetId || media.uri} style={styles.imageWrapper}>
-                    {media.type === 'video' ? (
-                      <VideoPreview
-                        videoUri={media.uri}
-                        onPress={() => handleMediaPreview(media)}
-                      />
-                    ) : (
-                      <TouchableOpacity
-                        onPress={() => handleMediaPreview(media)}
-                        style={styles.imageTouchable}
-                      >
-                        {isLoadingOcr[media.uri] ? (
-                          <BlurView intensity={90} style={styles.imageThumbnail}>
-                            <Image 
-                              source={{ uri: media.uri }} 
-                              style={styles.imageThumbnail}
-                              resizeMode="cover"
-                            />
-                          </BlurView>
-                        ) : (
+      <View style={styles.summarySection}>
+        <SummarizationSection
+          questionText={questionText}
+          setQuestionText={setQuestionText}
+        />
+        
+        {selectedImages.length > 0 && (
+          <View style={styles.imagesSection}>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.imagesScrollContainer}
+            >
+              {selectedImages.map((media) => (
+                <View key={media.assetId || media.uri} style={styles.imageWrapper}>
+                  {media.type === 'video' ? (
+                    <VideoPreview
+                      videoUri={media.uri}
+                      onPress={() => handleMediaPreview(media)}
+                    />
+                  ) : (
+                    <TouchableOpacity
+                      onPress={() => {
+                        handleMediaPreview(media);
+                        analyzeImage(media.uri);
+                      }}
+                      style={styles.imageTouchable}
+                    >
+                      {isLoadingOcr[media.uri] || isAnalyzing ? (
+                        <BlurView intensity={90} style={styles.imageThumbnail}>
                           <Image 
                             source={{ uri: media.uri }} 
                             style={styles.imageThumbnail}
                             resizeMode="cover"
                           />
-                        )}
-                        {(isLoadingOcr[media.uri] || isAnalyzing) && (
-                          <OcrLoadingAnimation />
-                        )}
-                      </TouchableOpacity>
-                    )}
-                    <TouchableOpacity
-                      style={styles.deleteButton}
-                      onPress={() => removeImage(media.uri)}
-                    >
-                      <MaterialIcons name="close" size={20} color="#fff" />
+                        </BlurView>
+                      ) : (
+                        <Image 
+                          source={{ uri: media.uri }} 
+                          style={styles.imageThumbnail}
+                          resizeMode="cover"
+                        />
+                      )}
+                      {(isLoadingOcr[media.uri] || isAnalyzing) && (
+                        <OcrLoadingAnimation />
+                      )}
                     </TouchableOpacity>
-                    <View style={{ marginTop: 12 }}>
-                      <ImageTypeSelector 
-                        uri={media.uri} 
-                        currentType={imageTypes[media.uri] || 'OTHER'} 
-                        onTypeChange={handleTypeChange} 
-                      />
-                    </View>
+                  )}
+                  <TouchableOpacity
+                    style={styles.deleteButton}
+                    onPress={() => removeImage(media.uri)}
+                  >
+                    <MaterialIcons name="close" size={20} color="#fff" />
+                  </TouchableOpacity>
+                  <View style={{ marginTop: 12 }}>
+                    <ImageTypeSelector 
+                      uri={media.uri} 
+                      currentType={imageTypes[media.uri] || 'OTHER'} 
+                      onTypeChange={handleTypeChange} 
+                    />
                   </View>
-                ))}
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+        
+        {selectedImages.length === 0 && (
+          <TouchableOpacity
+            style={styles.imageUploadButton}
+            onPress={showMediaOptions}
+          >
+            <MaterialIcons name="add" size={48} color="#8e8e8e" />
+            <Text style={styles.imageUploadButtonText}>미디어 업로드</Text>
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity 
+          style={[
+            styles.getInfoButton, 
+            !questionText.trim() && styles.getInfoButtonDisabled
+          ]} 
+          onPress={handleGetInfo}
+          disabled={!questionText.trim() || isFetchingInfo}
+        >
+          {isFetchingInfo ? (
+            <LoadingWave />
+          ) : (
+            <Text style={[
+              styles.getInfoButtonText,
+              !questionText.trim() && styles.getInfoButtonTextDisabled
+            ]}>
+              이미지 정보 가져오기
+            </Text>
+          )}
+        </TouchableOpacity>
+
+        {/* Answer Display */}
+        {isFetchingInfo ? (
+          <AnswerLoadingSkeleton />
+        ) : infoResult && (
+          <View>
+            <Text style={styles.infoContainerTitle}>이미지 분석 결과</Text>
+            <View style={styles.infoResultContainer}>
+              <ScrollView style={styles.infoResultScrollView}>
+                <Markdown style={markdownStyles}>
+                  {infoResult}
+                </Markdown>
               </ScrollView>
             </View>
-          )}
-          
-          {selectedImages.length === 0 && (
-            <TouchableOpacity
-              style={styles.imageUploadButton}
-              onPress={showMediaOptions}
-            >
-              <MaterialIcons name="add" size={48} color="#8e8e8e" />
-              <Text style={styles.imageUploadButtonText}>미디어 업로드</Text>
-            </TouchableOpacity>
-          )}
+          </View>
+        )}
+      </View>
 
-          {/* Task Suggestions */}
-          {taskSuggestions.length > 0 && (
-            <TaskSuggestionList 
-              suggestions={taskSuggestions} 
-              onTaskSelect={handleTaskSelect}
-            />
-          )}
-
-          <TouchableOpacity 
-            style={[
-              styles.getInfoButton, 
-              !questionText.trim() && styles.getInfoButtonDisabled
-            ]} 
-            onPress={handleGetInfo}
-            disabled={!questionText.trim() || isFetchingInfo}
-          >
-            {isFetchingInfo ? (
-              <LoadingWave />
-            ) : (
-              <Text style={[
-                styles.getInfoButtonText,
-                !questionText.trim() && styles.getInfoButtonTextDisabled
-              ]}>
-                이미지 정보 가져오기
-              </Text>
-            )}
-          </TouchableOpacity>
-
-          {/* Answer Display */}
-          {isFetchingInfo ? (
-            <AnswerLoadingSkeleton />
-          ) : infoResult && (
-            <View>
-              <Text style={styles.infoContainerTitle}>이미지 분석 결과</Text>
-              <View style={styles.infoResultContainer}>
-                <ScrollView style={styles.infoResultScrollView}>
-                  <Markdown style={markdownStyles}>
-                    {infoResult}
-                  </Markdown>
-                </ScrollView>
-              </View>
-            </View>
-          )}
-        </View>
-
-        <MediaPreviewModal
-          visible={!!previewMediaAsset}
-          onClose={closePreview}
-          mediaAsset={previewMediaAsset}
-          ocrResult={ocrResults[previewMediaAsset?.uri || '']}
-          isLoadingOcr={isLoadingOcr[previewMediaAsset?.uri || '']}
-          colorScheme={colorScheme}
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          analysisResult={analysisResult}
-        >
-          <Text>이미지 유형: {imageTypes[previewMediaAsset?.uri || ''] || '기타'}</Text>
-        </MediaPreviewModal>
-      </ScrollView>
-    </TouchableWithoutFeedback>
+      <MediaPreviewModal
+        visible={!!previewMediaAsset}
+        onClose={closePreview}
+        mediaAsset={previewMediaAsset}
+        ocrResult={ocrResults[previewMediaAsset?.uri || '']}
+        isLoadingOcr={isLoadingOcr[previewMediaAsset?.uri || '']}
+        colorScheme={colorScheme === 'dark' ? 'dark' : 'light'}
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        analysisResult={analysisResult}
+      >
+        <Text>이미지 유형: {imageTypes[previewMediaAsset?.uri || ''] || '기타'}</Text>
+      </MediaPreviewModal>
+    </ScrollView>
   );
 };
 
