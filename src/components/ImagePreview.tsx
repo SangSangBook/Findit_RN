@@ -1,15 +1,16 @@
 import { ResizeMode, Video } from 'expo-av';
 import { ImagePickerAsset } from 'expo-image-picker';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Image, Keyboard, TouchableWithoutFeedback, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-    useAnimatedStyle,
-    useSharedValue,
-    withSpring
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring
 } from 'react-native-reanimated';
 import Svg, { Rect, Text as SvgText } from 'react-native-svg';
-import type { OcrResult, OcrTextBox } from '../api/googleVisionApi';
+import type { OcrResult } from '../api/googleVisionApi';
+import { englishToKorean, koreanToEnglish } from '../constants/languageMapping';
 import { imagePreviewStyles as styles } from '../styles/ImagePreview.styles';
 
 interface ImageLayout {
@@ -22,9 +23,22 @@ interface ImagePreviewProps {
   ocrResult: OcrResult | null;
   isLoadingOcr: boolean;
   searchTerm?: string;
+  analysisResult?: {
+    objects: Array<{
+      name: string;
+      confidence: number;
+      boundingBox: Array<{ x: number; y: number }>;
+    }>;
+  } | null;
 }
 
-const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrResult, isLoadingOcr, searchTerm = '' }) => {
+const ImagePreview: React.FC<ImagePreviewProps> = ({ 
+  image, 
+  ocrResult, 
+  isLoadingOcr, 
+  searchTerm = '',
+  analysisResult = null 
+}) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [imageLayout, setImageLayout] = useState<ImageLayout | null>(null);
   const [containerLayout, setContainerLayout] = useState<ImageLayout | null>(null);
@@ -114,6 +128,56 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrResult, isLoading
   const fullTextMatch = ocrResult && searchTerm.length > 0
     ? ocrResult.fullText.toLowerCase().includes(searchTerm.toLowerCase())
     : false;
+
+  // 검색어와 일치하는 물체 결과 필터링
+  const objectMatches = analysisResult && searchTerm.length > 0
+    ? analysisResult.objects.filter(obj => {
+        // 물체 이름의 부분 일치도 검색되도록 수정
+        const objName = obj.name.toLowerCase();
+        const searchTermLower = searchTerm.toLowerCase();
+        
+        // 검색어가 한글인 경우
+        if (/[가-힣]/.test(searchTermLower)) {
+          const englishTerms = koreanToEnglish[searchTermLower] || [];
+          return englishTerms.some(term => objName.includes(term));
+        }
+        
+        // 검색어가 영어인 경우
+        const koreanTerms = englishToKorean[searchTermLower] || [];
+        return objName.includes(searchTermLower) || koreanTerms.some(term => objName.includes(term));
+      })
+    : [];
+
+  // 검색어가 변경될 때마다 결과 업데이트
+  useEffect(() => {
+    if (searchTerm.length > 0) {
+      // 검색어가 있을 때만 결과 업데이트
+      const newMatches = ocrResult?.textBoxes.filter(item => {
+        if (item.description.length > 100) return false;
+        return item.description.toLowerCase().includes(searchTerm.toLowerCase());
+      }) || [];
+
+      const newFullTextMatch = ocrResult?.fullText.toLowerCase().includes(searchTerm.toLowerCase()) || false;
+
+      const newObjectMatches = analysisResult?.objects.filter(obj => {
+        const objName = obj.name.toLowerCase();
+        const searchTermLower = searchTerm.toLowerCase();
+        
+        if (/[가-힣]/.test(searchTermLower)) {
+          const englishTerms = koreanToEnglish[searchTermLower] || [];
+          return englishTerms.some(term => objName.includes(term));
+        }
+        
+        const koreanTerms = englishToKorean[searchTermLower] || [];
+        return objName.includes(searchTermLower) || koreanTerms.some(term => objName.includes(term));
+      }) || [];
+
+      // 결과가 있으면 박스 표시
+      if (newMatches.length > 0 || newFullTextMatch || newObjectMatches.length > 0) {
+        // 박스 표시 로직은 이미 구현되어 있으므로 추가 작업 불필요
+      }
+    }
+  }, [searchTerm, ocrResult, analysisResult]);
 
   // 확대/축소 제스처 설정
   const pinchGesture = Gesture.Pinch()
@@ -209,8 +273,8 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrResult, isLoading
                     resizeMode="contain"
                     onLayout={onImageLayout}
                   />
-                  {/* 검색 결과(매칭 OCR)만 네모 박스 오버레이 */}
-                  {containerLayout && imageLayout && (matches.length > 0 || fullTextMatch) && (
+                  {/* 검색 결과(매칭 OCR 및 물체) 네모 박스 오버레이 */}
+                  {containerLayout && imageLayout && ((matches.length > 0 || fullTextMatch) || objectMatches.length > 0) && (
                     (() => {
                       const origWidth = imageNaturalSize?.width || imageLayout.width;
                       const origHeight = imageNaturalSize?.height || imageLayout.height;
@@ -240,10 +304,10 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrResult, isLoading
                                 y={0}
                                 width={contained.width}
                                 height={contained.height}
-                                stroke="rgba(255, 165, 0, 0.8)"
+                                stroke="rgba(70, 250, 118, 0.8)"
                                 strokeWidth={4}
                                 strokeDasharray="10,5"
-                                fill="rgba(255, 165, 0, 0.05)"
+                                fill="rgba(70, 250, 118, 0.05)"
                                 rx={8}
                                 ry={8}
                               />
@@ -252,7 +316,7 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrResult, isLoading
                                 y={20}
                                 fontSize="16"
                                 fontWeight="bold"
-                                fill="rgba(255, 165, 0, 0.9)"
+                                fill="rgba(70, 250, 118, 0.9)"
                                 textAnchor="middle"
                               >
                                 텍스트 발견됨
@@ -261,31 +325,62 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ image, ocrResult, isLoading
                           )}
                           
                           {/* 개별 텍스트 매칭 박스 */}
-                          {matches.map((item: OcrTextBox, idx: number) => {
-                            if (!item.boundingPoly || !item.boundingPoly.vertices || item.boundingPoly.vertices.length < 4) return null;
-                            const v = item.boundingPoly.vertices;
-                            const scaleX = contained.width / origWidth;
-                            const scaleY = contained.height / origHeight;
-                            const x1 = v[0].x * scaleX;
-                            const y1 = v[0].y * scaleY;
-                            const x2 = v[2].x * scaleX;
-                            const y2 = v[2].y * scaleY;
-                            const boxWidth = Math.abs(x2 - x1);
-                            const boxHeight = Math.abs(y2 - y1);
+                          {matches.map((match, index) => {
+                            const vertices = match.boundingPoly.vertices;
+                            const minX = Math.min(...vertices.map(v => v.x));
+                            const minY = Math.min(...vertices.map(v => v.y));
+                            const maxX = Math.max(...vertices.map(v => v.x));
+                            const maxY = Math.max(...vertices.map(v => v.y));
                             
+                            const x = (minX / origWidth) * contained.width;
+                            const y = (minY / origHeight) * contained.height;
+                            const width = ((maxX - minX) / origWidth) * contained.width;
+                            const height = ((maxY - minY) / origHeight) * contained.height;
+
                             return (
-                              <Rect
-                                key={idx}
-                                x={Math.min(x1, x2)}
-                                y={Math.min(y1, y2)}
-                                width={boxWidth}
-                                height={boxHeight}
-                                stroke="rgba(70, 230, 120, 0.8)"
-                                strokeWidth={2}
-                                fill="rgba(70, 230, 120, 0.4)"
-                                rx={4}
-                                ry={4}
-                              />
+                              <React.Fragment key={`text-${index}`}>
+                                <Rect
+                                  x={x}
+                                  y={y}
+                                  width={width}
+                                  height={height}
+                                  stroke="#46B876"
+                                  strokeWidth={2}
+                                  fill="rgba(70, 184, 118, 0.1)"
+                                  rx={2}
+                                  ry={2}
+                                />
+                              </React.Fragment>
+                            );
+                          })}
+
+                          {/* 물체 매칭 박스 */}
+                          {objectMatches.map((obj, index) => {
+                            const vertices = obj.boundingBox;
+                            const minX = Math.min(...vertices.map(v => v.x));
+                            const minY = Math.min(...vertices.map(v => v.y));
+                            const maxX = Math.max(...vertices.map(v => v.x));
+                            const maxY = Math.max(...vertices.map(v => v.y));
+                            
+                            const x = minX * contained.width;
+                            const y = minY * contained.height;
+                            const width = (maxX - minX) * contained.width;
+                            const height = (maxY - minY) * contained.height;
+
+                            return (
+                              <React.Fragment key={`obj-${index}`}>
+                                <Rect
+                                  x={x}
+                                  y={y}
+                                  width={width}
+                                  height={height}
+                                  stroke="#4299E2"
+                                  strokeWidth={2}
+                                  fill="rgba(66, 153, 225, 0.1)"
+                                  rx={2}
+                                  ry={2}
+                                />
+                              </React.Fragment>
                             );
                           })}
                         </Svg>
