@@ -21,11 +21,12 @@ import {
 import Markdown from 'react-native-markdown-display';
 import type { OcrResult } from '../api/googleVisionApi';
 import { ocrWithGoogleVision } from '../api/googleVisionApi';
-import { getInfoFromTextWithOpenAI } from '../api/openaiApi';
+import { getInfoFromTextWithOpenAI, suggestTasksFromOcr, TaskSuggestion } from '../api/openaiApi';
 import { extractTextFromVideo } from '../api/videoOcrApi';
 import ImageTypeSelector from '../components/ImageTypeSelector';
 import MediaPreviewModal from '../components/MediaPreviewModal';
 import SummarizationSection from '../components/SummarizationSection';
+import TaskSuggestionList from '../components/TaskSuggestionList';
 import VideoPreview from '../components/VideoPreview';
 import { ImageType } from '../constants/ImageTypes';
 import { homeScreenStyles as styles } from '../styles/HomeScreen.styles';
@@ -97,6 +98,14 @@ interface AnalysisResult {
     url: string;
     score: number;
   }>;
+}
+
+// 이미지별 task 제안을 관리하기 위한 인터페이스
+interface ImageTaskSuggestions {
+  [imageUri: string]: {
+    suggestions: TaskSuggestion[];
+    imageType: ImageType;
+  }
 }
 
 const LoadingWave = () => {
@@ -366,6 +375,14 @@ const HomeScreen = () => {
   const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [taskSuggestions, setTaskSuggestions] = useState<TaskSuggestion[]>([]);
+  const [imageTaskSuggestions, setImageTaskSuggestions] = useState<ImageTaskSuggestions>({});
+  const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
+
+  // 디버깅을 위한 useEffect 추가
+  useEffect(() => {
+    console.log('Task suggestions updated:', taskSuggestions);
+  }, [taskSuggestions]);
 
   const handleTypeChange = (uri: string, newType: ImageType) => {
     setImageTypes(prev => ({ ...prev, [uri]: newType }));
@@ -522,6 +539,7 @@ const HomeScreen = () => {
           return asset;
         }));
 
+        // 선택된 이미지들을 상태에 추가
         setSelectedImages(prevImages => [...prevImages, ...manipulatedAssets]);
         const newAssetUriMap = { ...assetUriMap };
         manipulatedAssets.forEach(asset => {
@@ -529,7 +547,7 @@ const HomeScreen = () => {
         });
         setAssetUriMap(newAssetUriMap);
 
-        // 각 미디어에 대해 OCR 처리
+        // 각 미디어에 대해 OCR 처리 및 task 제안 생성
         for (const asset of manipulatedAssets) {
           if (asset.uri) {
             if (asset.type === 'video') {
@@ -545,6 +563,24 @@ const HomeScreen = () => {
                 if (analysisResult.text) {
                   console.log('\n[텍스트 분석 결과]');
                   console.log(analysisResult.text);
+                  
+                  // OCR 결과로 task 제안 생성
+                  const suggestions = await suggestTasksFromOcr(analysisResult.text);
+                  if (suggestions && suggestions.length > 0) {
+                    // 각 이미지별로 task 제안 저장
+                    setImageTaskSuggestions(prev => ({
+                      ...prev,
+                      [asset.uri]: {
+                        suggestions,
+                        imageType: imageTypes[asset.uri] || 'OTHER'
+                      }
+                    }));
+                    
+                    // 첫 번째 이미지인 경우 자동으로 선택
+                    if (!selectedImageUri) {
+                      setSelectedImageUri(asset.uri);
+                    }
+                  }
                 }
 
                 if (analysisResult.objects.length > 0) {
@@ -603,7 +639,7 @@ const HomeScreen = () => {
       Alert.alert('오류', '미디어를 선택하는 중 오류가 발생했습니다.');
     }
   };
-  
+
   const handleChooseDocument = async () => {
     try {
       // 문서 선택 기능은 Expo의 DocumentPicker를 사용해야 하지만,
@@ -642,7 +678,7 @@ const HomeScreen = () => {
         if (newImage.type === 'image' && newImage.uri) {
           const manipulated = await ImageManipulator.manipulateAsync(
             newImage.uri,
-            [], // no-op, just strip EXIF
+            [],
             { compress: 1, format: ImageManipulator.SaveFormat.JPEG }
           );
           newImage = { ...newImage, uri: manipulated.uri };
@@ -663,6 +699,12 @@ const HomeScreen = () => {
             if (analysisResult.text) {
               console.log('\n[텍스트 분석 결과]');
               console.log(analysisResult.text);
+              
+              // OCR 결과로 task 제안 생성
+              const suggestions = await suggestTasksFromOcr(analysisResult.text);
+              if (suggestions && suggestions.length > 0) {
+                setTaskSuggestions(suggestions);
+              }
             }
 
             if (analysisResult.objects.length > 0) {
@@ -762,6 +804,9 @@ const HomeScreen = () => {
           throw new Error('이미지 분석에 실패했습니다.');
         }
 
+        console.log('=== Image Analysis Started ===');
+        console.log('Analysis Result:', analysisResult);
+
         // 물체 감지 결과를 기반으로 문서 유형 추정
         const detectedObjects = analysisResult.objects.map(obj => obj.name.toLowerCase());
         const detectedLabels = analysisResult.labels.map(label => label.description.toLowerCase());
@@ -817,8 +862,8 @@ const HomeScreen = () => {
             const koreanTranslations = await translateToKorean(obj.name);
             const koreanText = koreanTranslations.length > 0 ? ` (${koreanTranslations.join(', ')})` : '';
             
-            console.log(`- ${obj.name}${koreanText} (신뢰도: ${(obj.confidence * 100).toFixed(1)}%)`);
-            console.log(`  위치: 왼쪽 ${position.left}%, 위 ${position.top}%, 오른쪽 ${position.right}%, 아래 ${position.bottom}%`);
+            analysisText += `- ${obj.name}${koreanText} (신뢰도: ${(obj.confidence * 100).toFixed(1)}%)\n`;
+            analysisText += `  위치: 왼쪽 ${position.left}%, 위 ${position.top}%, 오른쪽 ${position.right}%, 아래 ${position.bottom}%\n`;
           }
           analysisText += '\n';
         }
@@ -1016,18 +1061,35 @@ const HomeScreen = () => {
     }
   };
 
+  // 이미지 삭제 시 관련 상태들도 함께 정리
   const removeImage = (uri: string) => {
+    // 선택된 이미지 목록에서 제거
     setSelectedImages(prevImages => prevImages.filter(img => img.uri !== uri));
+    // OCR 결과에서 제거
     setOcrResults(prevResults => {
       const newResults = { ...prevResults };
       delete newResults[uri];
       return newResults;
     });
+    // 이미지 타입 정보에서 제거
     setImageTypes(prev => {
       const newTypes = { ...prev };
       delete newTypes[uri];
       return newTypes;
     });
+    
+    // task 제안에서도 해당 이미지 제거
+    setImageTaskSuggestions(prev => {
+      const newSuggestions = { ...prev };
+      delete newSuggestions[uri];
+      return newSuggestions;
+    });
+
+    // 삭제된 이미지가 현재 선택된 이미지였다면 다른 이미지 선택
+    if (uri === selectedImageUri) {
+      const remainingUris = Object.keys(imageTaskSuggestions).filter(key => key !== uri);
+      setSelectedImageUri(remainingUris[0] || null);
+    }
   };
 
   const openPreview = (mediaAsset: ImagePickerAsset) => {
@@ -1046,6 +1108,57 @@ const HomeScreen = () => {
       duration: 300,
       useNativeDriver: false,
     }).start();
+  };
+
+  // Task 선택 시 해당 이미지의 정보를 기반으로 처리
+  const handleTaskSelect = async (task: TaskSuggestion) => {
+    setQuestionText(task.task);
+    setInfoResult(null);
+    setIsFetchingInfo(true);
+
+    try {
+      // 현재 선택된 이미지 찾기
+      const selectedMedia = selectedImages.find(img => img.uri === selectedImageUri);
+      if (!selectedMedia?.uri) {
+        throw new Error('미디어 URI가 없습니다.');
+      }
+
+      let analysisText = '';
+
+      // 비디오인 경우 비디오 분석 결과 사용
+      if (selectedMedia.type === 'video') {
+        try {
+          const results = await extractTextFromVideo(selectedMedia.uri, 1);
+          if (results.length > 0) {
+            analysisText = results.map(result => result.text).join('\n');
+          }
+        } catch (error) {
+          console.error('비디오 분석 중 오류:', error);
+        }
+      } else {
+        // 이미지인 경우 이미지 분석 결과 사용
+        const analysisResult = await analyzeImage(selectedMedia.uri);
+        if (analysisResult && analysisResult.text) {
+          analysisText = analysisResult.text;
+        }
+      }
+
+      // 선택된 task와 분석 결과를 기반으로 정보 검색
+      const information = await getInfoFromTextWithOpenAI(`${analysisText}\n\n질문: ${task.task}`);
+      setInfoResult(information);
+
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: false,
+      }).start();
+
+    } catch (error) {
+      console.error('Error processing task:', error);
+      setInfoResult('작업 처리 중 오류가 발생했습니다.');
+    } finally {
+      setIsFetchingInfo(false);
+    }
   };
 
   return (
@@ -1161,6 +1274,47 @@ const HomeScreen = () => {
             </Text>
           )}
         </TouchableOpacity>
+
+        {/* Task Suggestions Section */}
+        {Object.keys(imageTaskSuggestions).length > 0 && (
+          <View style={styles.taskSuggestionsContainer}>
+            {/* 이미지 선택을 위한 가로 스크롤 뷰 */}
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              style={styles.imageSelectorScroll}
+            >
+              {Object.entries(imageTaskSuggestions).map(([uri, data], idx) => (
+                <TouchableOpacity
+                  key={uri}
+                  style={[
+                    styles.imageSelectorItem,
+                    selectedImageUri === uri && styles.imageSelectorItemSelected
+                  ]}
+                  onPress={() => setSelectedImageUri(uri)}
+                >
+                  <Image 
+                    source={{ uri }} 
+                    style={styles.imageSelectorThumbnail}
+                  />
+                  <Text style={styles.imageTypeText}>
+                    {`${idx + 1}번째`}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {/* 선택된 이미지의 task 제안 목록 표시 */}
+            {selectedImageUri && imageTaskSuggestions[selectedImageUri] && (
+              <View style={styles.taskSuggestionsList}>
+                <TaskSuggestionList
+                  suggestions={imageTaskSuggestions[selectedImageUri].suggestions}
+                  onTaskSelect={handleTaskSelect}
+                />
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Answer Display */}
         {isFetchingInfo ? (

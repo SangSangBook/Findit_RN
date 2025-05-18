@@ -14,8 +14,8 @@ const openai = new OpenAI({
  * @param text 요약할 텍스트입니다.
  * @returns 요약된 텍스트 또는 오류 메시지를 반환하는 Promise 객체입니다.
  */
-export const getInfoFromTextWithOpenAI = async (text: string): Promise<string | null> => {
-  if (!text.trim()) {
+export const getInfoFromTextWithOpenAI = async (text: string | null): Promise<string> => {
+  if (!text) {
     return '정보를 추출할 텍스트가 제공되지 않았습니다.';
   }
   try {
@@ -74,8 +74,8 @@ Apple의 스마트 워치 Pro는 건강 모니터링 기능을 강조하는 프�
         },
         { role: 'user', content: text },
       ],
-      max_tokens: 500, // 더 풍부한 응답을 위해 토큰 수 증가
-      temperature: 0.7, // 창의성을 높이기 위해 temperature 값 증가
+      max_tokens: 500,
+      temperature: 0.7,
     });
 
     const information = completion.choices[0]?.message?.content;
@@ -90,5 +90,149 @@ Apple의 스마트 워치 Pro는 건강 모니터링 기능을 강조하는 프�
         return `OpenAI API 오류: ${error.status} ${error.name} ${error.message}`;
     }
     return 'OpenAI 응답이 없거나, 예기치 않은 오류로 인해 정보를 추출하지 못했습니다.';
+  }
+};
+
+export interface TaskSuggestion {
+  task: string;
+  description: string;
+  priority: 'high' | 'medium' | 'low';
+}
+
+/**
+ * OCR 텍스트를 분석하여 수행해야 할 작업들을 제안합니다.
+ * @param ocrText OCR로 추출된 텍스트
+ * @returns 제안된 작업 목록
+ */
+export const suggestTasksFromOcr = async (ocrText: string | null): Promise<TaskSuggestion[]> => {
+  try {
+    if (!ocrText) {
+      return [];
+    }
+
+    const prompt = `
+      다음은 이미지에서 추출한 텍스트입니다. 이 텍스트를 바탕으로 수행해야 할 작업들을 제안해주세요.
+      최소 3개 이상의 작업을 제안해주세요. 각각 다른 우선순위(high, medium, low)를 가진 작업을 포함해주세요.
+      
+      텍스트:
+      ${ocrText}
+    `;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: `당신은 텍스트를 분석하여 수행해야 할 작업을 제안하는 어시스턴트입니다.
+다음 규칙을 따라주세요:
+1. 모든 응답은 반드시 한글로 작성해주세요.
+2. 작업 제목은 간단명료하게 작성해주세요.
+3. 작업 설명은 구체적이고 실용적으로 작성해주세요.
+4. 반드시 3개 이상의 작업을 제안해주세요.
+5. 각 작업은 다음 형식으로 작성해주세요:
+   [우선순위] 작업 제목
+   - 설명: 작업에 대한 상세 설명
+
+6. 우선순위는 다음 기준으로 설정해주세요:
+   - [긴급]: 즉시 처리해야 하는 중요한 작업 (최소 1개)
+   - [중요]: 당장은 아니지만 곧 처리해야 하는 작업 (최소 1개)
+   - [보통]: 여유가 있을 때 처리해도 되는 작업 (최소 1개)`
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 0.7,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      return [];
+    }
+
+    // 텍스트 응답을 파싱하여 TaskSuggestion 배열로 변환
+    const lines = content.split('\n');
+    const suggestions: TaskSuggestion[] = [];
+    let currentTask: Partial<TaskSuggestion> = {};
+
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      if (!trimmedLine) continue;
+
+      // 우선순위와 제목이 있는 라인 처리
+      if (trimmedLine.startsWith('[') && trimmedLine.includes(']')) {
+        if (currentTask.task && currentTask.description) {
+          suggestions.push(currentTask as TaskSuggestion);
+        }
+        
+        const priorityMatch = trimmedLine.match(/\[(.*?)\]/);
+        const priority = priorityMatch ? priorityMatch[1] : '';
+        const title = trimmedLine.split(']')[1].trim();
+        
+        currentTask = {
+          task: title,
+          priority: priority === '긴급' ? 'high' : 
+                   priority === '중요' ? 'medium' : 
+                   priority === '보통' ? 'low' : 'medium',
+          description: ''
+        };
+      }
+      // 설명이 있는 라인 처리
+      else if (trimmedLine.startsWith('- 설명:')) {
+        currentTask.description = trimmedLine.replace('- 설명:', '').trim();
+      }
+    }
+
+    // 마지막 작업 추가
+    if (currentTask.task && currentTask.description) {
+      suggestions.push(currentTask as TaskSuggestion);
+    }
+
+    return suggestions;
+  } catch (error) {
+    console.error('Task suggestion error:', error);
+    return [];
+  }
+};
+
+/**
+ * 선택된 작업에 대한 상세 정보를 요청합니다.
+ * @param task 선택된 작업 정보
+ * @param ocrText 원본 OCR 텍스트
+ * @returns 작업에 대한 상세 정보
+ */
+export const getTaskDetails = async (
+  task: TaskSuggestion,
+  ocrText: string | null
+): Promise<string> => {
+  try {
+    if (!ocrText) {
+      return '원본 텍스트가 없어 상세 정보를 제공할 수 없습니다.';
+    }
+
+    const prompt = `
+      다음은 이미지에서 추출한 텍스트와 선택된 작업입니다.
+      이 작업에 대해 더 자세한 정보를 제공해주세요.
+      
+      선택된 작업:
+      - 제목: ${task.task}
+      - 설명: ${task.description}
+      - 우선순위: ${task.priority}
+      
+      원본 텍스트:
+      ${ocrText}
+
+      위 정보를 바탕으로 다음 사항들을 포함하여 자세히 설명해주세요:
+      1. 이 작업이 왜 중요한지
+      2. 이 작업을 수행하기 위한 구체적인 단계
+      3. 이 작업과 관련된 주의사항이나 팁
+      4. 이 작업을 완료하기 위한 예상 소요 시간
+    `;
+
+    return await getInfoFromTextWithOpenAI(prompt);
+  } catch (error) {
+    console.error('Task details error:', error);
+    return '작업 상세 정보를 가져오는 중 오류가 발생했습니다.';
   }
 };
