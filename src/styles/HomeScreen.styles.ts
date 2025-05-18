@@ -465,6 +465,34 @@ export const homeScreenStyles = StyleSheet.create({
   taskSuggestionDescription: {
     fontSize: 14,
     color: '#666',
-    lineHeight: 20,
+    marginTop: 4,
+  },
+
+  imageSelectorScroll: {
+    marginBottom: 16,
+  },
+  imageSelectorItem: {
+    marginRight: 12,
+    borderRadius: 8,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  imageSelectorItemSelected: {
+    borderColor: '#46B876',
+  },
+  imageSelectorThumbnail: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+  },
+  imageTypeText: {
+    textAlign: 'center',
+    marginTop: 4,
+    fontSize: 12,
+    color: '#666',
+  },
+  taskSuggestionsList: {
+    marginTop: 8,
   },
 });
