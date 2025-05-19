@@ -95,8 +95,7 @@ Apple의 스마트 워치 Pro는 건강 모니터링 기능을 강조하는 프�
 
 export interface TaskSuggestion {
   task: string;
-  description: string;
-  priority: 'high' | 'medium' | 'low';
+  priority: '중요' | '보통' | '낮음';
 }
 
 /**
@@ -134,9 +133,9 @@ export const suggestTasksFromOcr = async (ocrText: string | null): Promise<TaskS
    - 설명: 작업에 대한 상세 설명
 
 6. 우선순위는 다음 기준으로 설정해주세요:
-   - [긴급]: 즉시 처리해야 하는 중요한 작업 (최소 1개)
-   - [중요]: 당장은 아니지만 곧 처리해야 하는 작업 (최소 1개)
-   - [보통]: 여유가 있을 때 처리해도 되는 작업 (최소 1개)`
+   - [중요]: 즉시 처리해야 하는 중요한 작업 (최소 1개)
+   - [보통]: 곧 처리해야 하는 작업 (최소 1개)
+   - [낮음]: 여유가 있을 때 처리해도 되는 작업 (최소 1개)`
         },
         {
           role: "user",
@@ -162,7 +161,7 @@ export const suggestTasksFromOcr = async (ocrText: string | null): Promise<TaskS
 
       // 우선순위와 제목이 있는 라인 처리
       if (trimmedLine.startsWith('[') && trimmedLine.includes(']')) {
-        if (currentTask.task && currentTask.description) {
+        if (currentTask.task && currentTask.priority) {
           suggestions.push(currentTask as TaskSuggestion);
         }
         
@@ -172,20 +171,15 @@ export const suggestTasksFromOcr = async (ocrText: string | null): Promise<TaskS
         
         currentTask = {
           task: title,
-          priority: priority === '긴급' ? 'high' : 
-                   priority === '중요' ? 'medium' : 
-                   priority === '보통' ? 'low' : 'medium',
-          description: ''
+          priority: priority === '중요' ? '중요' : 
+                   priority === '보통' ? '보통' : 
+                   priority === '낮음' ? '낮음' : '보통',
         };
-      }
-      // 설명이 있는 라인 처리
-      else if (trimmedLine.startsWith('- 설명:')) {
-        currentTask.description = trimmedLine.replace('- 설명:', '').trim();
       }
     }
 
     // 마지막 작업 추가
-    if (currentTask.task && currentTask.description) {
+    if (currentTask.task && currentTask.priority) {
       suggestions.push(currentTask as TaskSuggestion);
     }
 
@@ -217,17 +211,15 @@ export const getTaskDetails = async (
       
       선택된 작업:
       - 제목: ${task.task}
-      - 설명: ${task.description}
       - 우선순위: ${task.priority}
       
       원본 텍스트:
       ${ocrText}
 
-      위 정보를 바탕으로 다음 사항들을 포함하여 자세히 설명해주세요:
+      위 정보를 바탕으로 다음 사항들을 포함하여 논리정연하고 간단하게 설명해주세요:
       1. 이 작업이 왜 중요한지
       2. 이 작업을 수행하기 위한 구체적인 단계
       3. 이 작업과 관련된 주의사항이나 팁
-      4. 이 작업을 완료하기 위한 예상 소요 시간
     `;
 
     return await getInfoFromTextWithOpenAI(prompt);
