@@ -13,11 +13,11 @@ const TaskSuggestionList: React.FC<TaskSuggestionListProps> = ({
 }) => {
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high':
+      case '중요':
         return '#FF4444';
-      case 'medium':
+      case '보통':
         return '#FFBB33';
-      case 'low':
+      case '낮음':
         return '#00C851';
       default:
         return '#757575';
@@ -26,12 +26,12 @@ const TaskSuggestionList: React.FC<TaskSuggestionListProps> = ({
 
   const getPriorityText = (priority: string) => {
     switch (priority) {
-      case 'high':
-        return '긴급';
-      case 'medium':
+      case '중요':
         return '중요';
-      case 'low':
+      case '보통':
         return '보통';
+      case '낮음':
+        return '낮음';
       default:
         return priority;
     }
@@ -61,7 +61,6 @@ const TaskSuggestionList: React.FC<TaskSuggestionListProps> = ({
               </Text>
             </View>
           </View>
-          <Text style={styles.taskDescription}>{suggestion.description}</Text>
         </TouchableOpacity>
       ))}
     </View>
@@ -125,11 +124,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '500',
-  },
-  taskDescription: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
   },
 });
 
