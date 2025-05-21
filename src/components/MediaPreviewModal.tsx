@@ -15,7 +15,9 @@ import {
   View
 } from 'react-native';
 import Modal from 'react-native-modal';
-import { getInfoFromTextWithOpenAI } from '../api/openaiApi';
+import {
+  answerQuestionFromSpeech
+} from '../api/openaiApiForSTT';
 import { speechToText, startRecording, stopRecording, textToSpeech } from '../api/speechApi';
 import { getThemedStyles } from '../styles/MediaPreviewModal.styles';
 import ImagePreview from './ImagePreview';
@@ -204,8 +206,12 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
       // 음성으로 받은 질문 추가
       analysisText += `\n\n질문: ${transcribedText.trim()}`;
       
-      // OpenAI API 호출
-      const aiResponse = await getInfoFromTextWithOpenAI(analysisText);
+      // OpenAI API For STT 호출
+      const aiResponse = await answerQuestionFromSpeech(
+        transcribedText.trim(),
+        ocrResult.fullText,
+        analysisResult
+      );
       console.log('AI 응답 받음');
       
       // TTS 변환 및 재생

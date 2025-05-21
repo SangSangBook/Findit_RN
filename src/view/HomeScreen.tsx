@@ -24,6 +24,9 @@ import Markdown from 'react-native-markdown-display';
 import type { OcrResult } from '../api/googleVisionApi';
 import { ocrWithGoogleVision } from '../api/googleVisionApi';
 import { getInfoFromTextWithOpenAI, suggestTasksFromOcr, TaskSuggestion } from '../api/openaiApi';
+import {
+  answerQuestionFromSpeech
+} from '../api/openaiApiForSTT';
 import { playAudio, speechToText, startRecording, stopRecording, textToSpeech } from '../api/speechApi';
 import { extractTextFromVideo } from '../api/videoOcrApi';
 import ImageTypeSelector from '../components/ImageTypeSelector';
@@ -1314,8 +1317,12 @@ const handleStopRecording = async () => {
             // 음성으로 받은 질문 추가
             analysisText += `\n\n질문: ${transcribedText.trim()}`;
             
-            // OpenAI API 호출
-            const aiResponse = await getInfoFromTextWithOpenAI(analysisText);
+            // OpenAI API For STT 호출
+            const aiResponse = await answerQuestionFromSpeech(
+              transcribedText.trim(),
+              currentOcrResult.fullText,
+              analysisResult
+            );
             console.log('AI 응답 받음');
             
             // 응답 저장 (필요시 UI 표시용)
