@@ -1,11 +1,13 @@
 import { GOOGLE_CLOUD_VISION_API_KEY, OPENAI_API_KEY } from '@env';
 import { MaterialIcons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 import { BlurView } from 'expo-blur';
 import * as FileSystem from 'expo-file-system';
 import * as ImageManipulator from 'expo-image-manipulator';
 import type { ImagePickerAsset } from 'expo-image-picker';
 import * as ImagePicker from 'expo-image-picker';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+
 import {
   ActionSheetIOS,
   Alert,
@@ -22,6 +24,7 @@ import Markdown from 'react-native-markdown-display';
 import type { OcrResult } from '../api/googleVisionApi';
 import { ocrWithGoogleVision } from '../api/googleVisionApi';
 import { getInfoFromTextWithOpenAI, suggestTasksFromOcr, TaskSuggestion } from '../api/openaiApi';
+import { playAudio, speechToText, startRecording, stopRecording, textToSpeech } from '../api/speechApi';
 import { extractTextFromVideo } from '../api/videoOcrApi';
 import ImageTypeSelector from '../components/ImageTypeSelector';
 import MediaPreviewModal from '../components/MediaPreviewModal';
@@ -32,6 +35,8 @@ import { ImageType } from '../constants/ImageTypes';
 import { homeScreenStyles as styles } from '../styles/HomeScreen.styles';
 import { detectImageType } from '../utils/imageTypeDetector';
 import { translateToKorean } from '../utils/koreanTranslator';
+
+
 
 interface SelectedImage {
   uri: string;
@@ -378,6 +383,16 @@ const HomeScreen = () => {
   const [taskSuggestions, setTaskSuggestions] = useState<TaskSuggestion[]>([]);
   const [imageTaskSuggestions, setImageTaskSuggestions] = useState<ImageTaskSuggestions>({});
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
+
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isProcessingSpeech, setIsProcessingSpeech] = useState(false);
+  const [ttsAudioUri, setTtsAudioUri] = useState<string | null>(null);
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+
+  // 음성 명령 처리 관련 상태 추가
+  const recordingDuration = useRef<number>(0);
+  const recordingStartTime = useRef<number>(0);
 
   // 디버깅을 위한 useEffect 추가
   useEffect(() => {
@@ -1109,6 +1124,267 @@ const HomeScreen = () => {
       useNativeDriver: false,
     }).start();
   };
+  // 음성 질문으로 정보 가져오기
+  const handleGetInfoFromSpeech = async (question: string) => {
+    if (!question.trim()) {
+      return;
+    }
+  
+    setQuestionText(question); // 질문 텍스트 상태 업데이트
+    setIsFetchingInfo(true);
+    setInfoResult(null);
+  
+    try {
+      const selectedMedia = previewMediaAsset;
+      if (!selectedMedia || !selectedMedia.uri) {
+        throw new Error('미디어 URI가 없습니다.');
+      }
+  
+      let analysisText = '';
+  
+      // 오디오/비디오인 경우
+      if (selectedMedia.type === 'video') {
+        try {
+          const results = await extractTextFromVideo(selectedMedia.uri, 1);
+          
+          if (results.length > 0) {
+            analysisText += '[비디오 텍스트 분석 결과]\n';
+            results.forEach(result => {
+              analysisText += `[${result.time/1000}초] ${result.text}\n`;
+            });
+            analysisText += '\n';
+          } else {
+            analysisText += '[비디오에서 텍스트를 찾을 수 없습니다.]\n\n';
+          }
+        } catch (error) {
+          console.error('비디오 분석 중 오류:', error);
+          analysisText += '[비디오 분석 중 오류가 발생했습니다.]\n\n';
+        }
+      } else {
+        // 이미지 분석 로직은 기존과 동일
+        const analysisResult = await analyzeImage(selectedMedia.uri);
+        if (!analysisResult) {
+          throw new Error('이미지 분석에 실패했습니다.');
+        }
+  
+        console.log('=== Image Analysis Started (Voice Query) ===');
+        console.log('Analysis Result:', analysisResult);
+  
+        // 물체 감지 결과를 기반으로 문서 유형 추정
+        const detectedObjects = analysisResult.objects.map(obj => obj.name.toLowerCase());
+        const detectedLabels = analysisResult.labels.map(label => label.description.toLowerCase());
+        
+        // 문서 유형 판별
+        let documentType = '';
+        if (detectedObjects.includes('receipt') || detectedLabels.includes('receipt')) {
+          documentType = '영수증';
+        } else if (detectedObjects.includes('id card') || detectedLabels.includes('id card')) {
+          documentType = '신분증';
+        } else if (detectedObjects.includes('business card') || detectedLabels.includes('business card')) {
+          documentType = '명함';
+        } else if (detectedObjects.includes('document') || detectedLabels.includes('document')) {
+          documentType = '문서';
+        }
+  
+        // 문서 유형이 감지된 경우
+        if (documentType) {
+          analysisText += `[문서 유형]\n${documentType}\n\n`;
+        }
+  
+        // 텍스트 분석 결과
+        if (analysisResult.text) {
+          analysisText += `[텍스트 분석 결과]\n${analysisResult.text}\n\n`;
+        }
+  
+        // 이미지 라벨
+        if (analysisResult.labels.length > 0) {
+          analysisText += '[이미지 라벨]\n';
+          analysisResult.labels.forEach(label => {
+            analysisText += `- ${label.description} (신뢰도: ${Math.round(label.confidence * 100)}%)\n`;
+          });
+          analysisText += '\n';
+        }
+      }
+  
+      // 음성으로 받은 질문 추가
+      analysisText += `\n질문: ${question.trim()}`;
+  
+      const information = await getInfoFromTextWithOpenAI(analysisText);
+      setInfoResult(information);
+  
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: false,
+      }).start();
+  
+    } catch (error) {
+      console.error('Error processing media with speech:', error);
+      setInfoResult('음성 질문 처리 중 오류가 발생했습니다.');
+    } finally {
+      setIsFetchingInfo(false);
+      // 모달 닫기
+      closePreview();
+    }
+  };
+
+  // 음성 녹음 시작
+const handleStartRecording = async () => {
+    try {
+      // 녹음 시작 시간 기록
+      recordingStartTime.current = Date.now();
+      
+      setIsRecording(true);
+      const newRecording = await startRecording();
+      setRecording(newRecording);
+      
+      console.log('녹음 시작됨');
+      return true; // 녹음 시작 성공
+    } catch (error) {
+      console.error('녹음 시작 오류:', error);
+      setIsRecording(false);
+      return false; // 녹음 시작 실패
+    }
+  };
+
+// 음성 녹음 중지 및 처리
+const handleStopRecording = async () => {
+  try {
+    if (!recording) {
+      console.log('녹음 객체가 없습니다');
+      setIsRecording(false);
+      return false;
+    }
+    
+    // 녹음 시간 계산
+    recordingDuration.current = Date.now() - recordingStartTime.current;
+    console.log(`녹음 시간: ${recordingDuration.current}ms`);
+    
+    // 너무 짧은 녹음인 경우 처리 중단 (300ms 미만)
+    if (recordingDuration.current < 300) {
+      console.log('녹음이 너무 짧습니다. 처리 중단');
+      
+      try {
+        // 녹음 중지는 시도하되 결과는 무시
+        await recording.stopAndUnloadAsync();
+      } catch (stopError) {
+        console.error('짧은 녹음 중지 중 오류:', stopError);
+      }
+      
+      setRecording(null);
+      setIsRecording(false);
+      return false;
+    }
+    
+    setIsRecording(false);
+    setIsProcessingSpeech(true);
+    
+    // 녹음 중지
+    const audioUri = await stopRecording(recording);
+    setRecording(null);
+    
+    // STT 처리
+    const transcribedText = await speechToText(audioUri);
+    
+    if (transcribedText && transcribedText.trim() && transcribedText !== '인식된 텍스트가 없습니다.') {
+      console.log('변환된 텍스트:', transcribedText);
+      
+      // 중요: 미디어 프리뷰 모달이 열려있지 않을 때만 질문 텍스트 설정
+      if (!previewMediaAsset) {
+        setQuestionText(transcribedText);
+      }
+      
+      // 현재 선택된 이미지를 기반으로 처리
+      if (previewMediaAsset && previewMediaAsset.uri) {
+        const currentOcrResult = ocrResults[previewMediaAsset.uri];
+        
+        if (currentOcrResult) {
+          try {
+            // OpenAI API 호출을 위한 분석 텍스트 준비
+            let analysisText = currentOcrResult.fullText || '';
+            
+            // 물체 인식 결과 추가
+            if (analysisResult && analysisResult.objects && analysisResult.objects.length > 0) {
+              analysisText += '\n\n[감지된 물체]\n';
+              analysisResult.objects.forEach(obj => {
+                analysisText += `- ${obj.name} (신뢰도: ${Math.round(obj.confidence * 100)}%)\n`;
+              });
+            }
+            
+            // 음성으로 받은 질문 추가
+            analysisText += `\n\n질문: ${transcribedText.trim()}`;
+            
+            // OpenAI API 호출
+            const aiResponse = await getInfoFromTextWithOpenAI(analysisText);
+            console.log('AI 응답 받음');
+            
+            // 응답 저장 (필요시 UI 표시용)
+            setInfoResult(aiResponse);
+            
+            // TTS 처리 및 음성 재생
+            const ttsUri = await textToSpeech(aiResponse);
+            if (ttsUri) {
+              await playAudio(ttsUri);
+            }
+            
+            return true; // 처리 성공
+          } catch (aiError) {
+            console.error('AI 처리 중 오류:', aiError);
+          }
+        }
+      }
+    } else {
+      console.log('음성 인식 실패 또는 텍스트 없음');
+    }
+    
+    return false; // 처리 실패 또는 텍스트 없음
+  } catch (error) {
+    console.error('녹음 중지 처리 중 오류:', error);
+    return false; // 처리 실패
+  } finally {
+    // 항상 처리 상태 초기화
+    setIsProcessingSpeech(false);
+  }
+};
+
+// 음성 인식 실패 시 상태 초기화를 위한 함수
+const handleSpeechRecognitionFailed = () => {
+  setIsProcessingSpeech(false);
+  setIsRecording(false);
+  if (recording) {
+    try {
+      recording.stopAndUnloadAsync().then(() => {
+        setRecording(null);
+      });
+    } catch (error) {
+      console.error('녹음 객체 정리 중 오류:', error);
+      setRecording(null);
+    }
+  }
+  console.log('음성 인식 실패, 상태 초기화됨');
+};
+
+// TTS로 응답 재생
+const handlePlayResponse = async (responseText: string) => {
+  try {
+    setIsPlayingAudio(true);
+    
+    // TTS 변환
+    const audioUri = await textToSpeech(responseText);
+    
+    if (audioUri) {
+      setTtsAudioUri(audioUri);
+      
+      // 오디오 재생
+      await playAudio(audioUri);
+    }
+    
+    setIsPlayingAudio(false);
+  } catch (error) {
+    console.error('TTS 재생 오류:', error);
+    setIsPlayingAudio(false);
+  }
+};
 
   // Task 선택 시 해당 이미지의 정보를 기반으로 처리
   const handleTaskSelect = async (task: TaskSuggestion) => {
@@ -1158,6 +1434,7 @@ const HomeScreen = () => {
       setInfoResult('작업 처리 중 오류가 발생했습니다.');
     } finally {
       setIsFetchingInfo(false);
+      closePreview();
     }
   };
 
@@ -1343,9 +1620,10 @@ const HomeScreen = () => {
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
         analysisResult={analysisResult}
+
       >
-        <Text>이미지 유형: {imageTypes[previewMediaAsset?.uri || ''] || '기타'}</Text>
-      </MediaPreviewModal>
+  <Text>이미지 유형: {imageTypes[previewMediaAsset?.uri || ''] || '기타'}</Text>
+</MediaPreviewModal>
     </ScrollView>
   );
 };
