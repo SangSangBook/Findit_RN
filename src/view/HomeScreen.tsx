@@ -956,18 +956,63 @@ const HomeScreen = () => {
 
   const analyzeImage = async (imageUri: string): Promise<AnalysisResult | null> => {
     try {
-      // 이미지 크기 가져오기
-      const imageInfo = await ImageManipulator.manipulateAsync(
+      // 1. 이미지 크기 최적화 (API 호출 전에 미리 리사이즈)
+      const optimizedImage = await ImageManipulator.manipulateAsync(
         imageUri,
-        [],
-        { compress: 1, format: ImageManipulator.SaveFormat.JPEG }
+        [
+          // 이미지가 너무 크면 리사이즈 (Google Vision API 권장: 최대 20MB, 권장 1024x1024)
+          { resize: { width: Math.min(1024, 2048) } }
+        ],
+        { 
+          compress: 0.8, // 압축률 조정 (0.8 = 80% 품질)
+          format: ImageManipulator.SaveFormat.JPEG 
+        }
       );
-
-      // 이미지를 base64로 변환
-      const base64Image = await FileSystem.readAsStringAsync(imageUri, {
+  
+      // 2. 이미지를 base64로 변환
+      const base64Image = await FileSystem.readAsStringAsync(optimizedImage.uri, {
         encoding: FileSystem.EncodingType.Base64,
       });
-
+  
+      // 3. base64 크기 체크 (Google Vision API 제한: 20MB)
+      const imageSizeInMB = (base64Image.length * 3) / 4 / (1024 * 1024); // base64 크기 계산
+      console.log(`이미지 크기: ${imageSizeInMB.toFixed(2)}MB`);
+      
+      if (imageSizeInMB > 18) { // 18MB로 여유두기
+        console.warn('이미지가 너무 큽니다. 추가 압축을 진행합니다.');
+        const furtherCompressed = await ImageManipulator.manipulateAsync(
+          optimizedImage.uri,
+          [{ resize: { width: 512 } }],
+          { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG }
+        );
+        
+        const compressedBase64 = await FileSystem.readAsStringAsync(furtherCompressed.uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        
+        return await callGoogleVisionAPI(compressedBase64);
+      }
+  
+      return await callGoogleVisionAPI(base64Image);
+  
+    } catch (error) {
+      console.log('이미지 분석 중 오류 발생:', error);
+      
+      // AbortError 특별 처리
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('네트워크 타임아웃 발생. 재시도를 권장합니다.');
+        return null;
+      }
+      
+      return null;
+    }
+  };
+  
+  // Google Vision API 호출을 별도 함수로 분리
+  const callGoogleVisionAPI = async (base64Image: string, retryCount: number = 0): Promise<AnalysisResult | null> => {
+    const maxRetries = 2; // 최대 2번 재시도
+    
+    try {
       // Google Cloud Vision API 요청 본문 준비
       const requestBody = {
         requests: [
@@ -988,11 +1033,14 @@ const HomeScreen = () => {
           },
         ],
       };
-
-      // API 요청 타임아웃 설정
+  
+      // 타임아웃 설정 (60초로 증가)
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30초 타임아웃
-
+      const timeoutId = setTimeout(() => {
+        console.log(`API 호출 타임아웃 (시도 횟수: ${retryCount + 1})`);
+        controller.abort();
+      }, 60000); // 30초 -> 60초로 증가
+  
       // Google Cloud Vision API 호출
       const response = await fetch(
         `https://vision.googleapis.com/v1/images:annotate?key=${GOOGLE_CLOUD_VISION_API_KEY}`,
@@ -1005,17 +1053,25 @@ const HomeScreen = () => {
           signal: controller.signal,
         }
       );
-
+  
       clearTimeout(timeoutId);
-
+  
       if (!response.ok) {
         console.log('Google Vision API 응답 오류:', response.status);
+        
+        // 429 (Rate Limit) 또는 503 (Service Unavailable) 에러인 경우 재시도
+        if ((response.status === 429 || response.status === 503) && retryCount < maxRetries) {
+          console.log(`API 에러 ${response.status}. ${retryCount + 1}초 후 재시도...`);
+          await new Promise(resolve => setTimeout(resolve, (retryCount + 1) * 1000));
+          return callGoogleVisionAPI(base64Image, retryCount + 1);
+        }
+        
         return null;
       }
-
+  
       const data = await response.json();
       const result = data.responses[0];
-
+  
       // 결과 처리
       const analysisResult: AnalysisResult = {
         text: result.textAnnotations?.[0]?.description || '',
@@ -1059,10 +1115,19 @@ const HomeScreen = () => {
           url: image.url,
         })) || [],
       };
-
+  
       return analysisResult;
+  
     } catch (error) {
-      console.log('이미지 분석 중 오류 발생:', error);
+      console.log(`API 호출 중 에러 (시도 횟수: ${retryCount + 1}):`, error);
+      
+      // AbortError인 경우 재시도
+      if (error instanceof Error && error.name === 'AbortError' && retryCount < maxRetries) {
+        console.log(`타임아웃 발생. ${retryCount + 1}초 후 재시도...`);
+        await new Promise(resolve => setTimeout(resolve, (retryCount + 1) * 1000));
+        return callGoogleVisionAPI(base64Image, retryCount + 1);
+      }
+      
       return null;
     }
   };
