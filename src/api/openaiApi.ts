@@ -117,6 +117,10 @@ export const suggestTasksFromOcr = async (ocrText: string | null): Promise<TaskS
       ${ocrText}
     `;
 
+    // 타임아웃 설정
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
@@ -143,7 +147,12 @@ export const suggestTasksFromOcr = async (ocrText: string | null): Promise<TaskS
         }
       ],
       temperature: 0.7,
+      // signal 추가해서 타임아웃 처리
+    }, {
+      signal: controller.signal
     });
+
+    clearTimeout(timeoutId);
 
     const content = response.choices[0]?.message?.content;
     if (!content) {
@@ -186,6 +195,12 @@ export const suggestTasksFromOcr = async (ocrText: string | null): Promise<TaskS
     return suggestions;
   } catch (error) {
     console.error('Task suggestion error:', error);
+    
+    // AbortError 특별 처리
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.log('OpenAI API 타임아웃 발생');
+    }
+    
     return [];
   }
 };
