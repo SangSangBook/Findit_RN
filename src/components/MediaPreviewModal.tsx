@@ -2,7 +2,7 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import { ImagePickerAsset } from 'expo-image-picker';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -21,7 +21,7 @@ import {
 import { speechToText, startRecording, stopRecording, textToSpeech } from '../api/speechApi';
 import { getThemedStyles } from '../styles/MediaPreviewModal.styles';
 import ImagePreview from './ImagePreview';
-import LoadingWave from './LoadingWave'; // LoadingWave 컴포넌트 임포트
+import LoadingWave from './LoadingWave';
 
 import type { OcrResult } from '../api/googleVisionApi';
 
@@ -72,13 +72,47 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
   const recordingRef = useRef<Audio.Recording | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
   const recordingStartTimeRef = useRef<number>(0);
+  const isCleaningUpRef = useRef<boolean>(false);
   
   // 녹음 버튼 비활성화 여부 계산
   const isRecordButtonDisabled = isLoadingOcr || isProcessingSpeech || isProcessingAI || 
     !ocrResult || !ocrResult.fullText || ocrResult.fullText.trim() === '';
 
+  // 안전한 녹음 객체 정리 함수
+  const cleanupRecording = useCallback(async () => {
+    if (isCleaningUpRef.current) return;
+    isCleaningUpRef.current = true;
+    
+    try {
+      if (recordingRef.current) {
+        console.log('녹음 객체 정리 시작');
+        const recording = recordingRef.current;
+        recordingRef.current = null;
+        
+        try {
+          const status = await recording.getStatusAsync();
+          if (status.canRecord || status.isRecording) {
+            await recording.stopAndUnloadAsync();
+          } else {
+            // Recording 객체는 unloadAsync가 없으므로 stopAndUnloadAsync만 사용
+            await recording.stopAndUnloadAsync();
+          }
+        } catch (error) {
+          console.log('녹음 객체 정리 중 오류 (무시됨):', error);
+          // 이미 해제된 객체일 수 있으므로 에러 무시
+        }
+        
+        console.log('녹음 객체 정리 완료');
+      }
+    } catch (error) {
+      console.error('녹음 정리 중 예외:', error);
+    } finally {
+      isCleaningUpRef.current = false;
+    }
+  }, []);
+
   // 오디오 중지 함수
-  const stopCurrentAudio = async () => {
+  const stopCurrentAudio = useCallback(async () => {
     try {
       if (soundRef.current) {
         await soundRef.current.stopAsync();
@@ -90,21 +124,37 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
       console.error('오디오 중지 중 오류:', error);
       setIsPlayingAudio(false);
     }
-  };
+  }, []);
 
   // 상태 초기화 함수
-  const resetStates = () => {
+  const resetStates = useCallback(async () => {
     setIsRecording(false);
     setIsProcessingSpeech(false);
     setIsPlayingAudio(false);
     setIsProcessingAI(false);
-  };
+    await cleanupRecording();
+    await stopCurrentAudio();
+  }, [cleanupRecording, stopCurrentAudio]);
 
   // 음성 녹음 시작
-  const handleStartRecording = async () => {
+  const handleStartRecording = useCallback(async () => {
     try {
-      // 이미 녹음 중이면 무시
-      if (isRecording) return;
+      // 이미 녹음 중이거나 처리 중이면 무시
+      if (isRecording || isProcessingSpeech || isProcessingAI || isCleaningUpRef.current) {
+        console.log('녹음 시작 무시 - 이미 진행 중');
+        return;
+      }
+      
+      // 버튼이 비활성화된 경우 무시
+      if (isRecordButtonDisabled) {
+        console.log('녹음 시작 무시 - 버튼 비활성화');
+        return;
+      }
+      
+      console.log('녹음 시작 시도');
+      
+      // 기존 녹음 객체 정리
+      await cleanupRecording();
       
       // 오디오 재생 중이면 중지
       await stopCurrentAudio();
@@ -114,20 +164,23 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
       
       // 녹음 시작
       setIsRecording(true);
-      recordingRef.current = await startRecording();
-      console.log('녹음 시작됨');
+      const newRecording = await startRecording();
+      recordingRef.current = newRecording;
+      
+      console.log('녹음 시작 완료');
     } catch (error) {
       console.error('녹음 시작 오류:', error);
       setIsRecording(false);
-      recordingRef.current = null;
+      await cleanupRecording();
     }
-  };
+  }, [isRecording, isProcessingSpeech, isProcessingAI, isRecordButtonDisabled, cleanupRecording, stopCurrentAudio]);
 
   // 음성 녹음 중지 및 처리
-  const handleStopRecording = async () => {
+  const handleStopRecording = useCallback(async () => {
     try {
       // 녹음 중이 아니면 무시
-      if (!isRecording || !recordingRef.current) {
+      if (!isRecording || !recordingRef.current || isCleaningUpRef.current) {
+        console.log('녹음 중지 무시 - 녹음 중이 아님');
         setIsRecording(false);
         return;
       }
@@ -136,29 +189,25 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
       const recordingDuration = Date.now() - recordingStartTimeRef.current;
       console.log(`녹음 시간: ${recordingDuration}ms`);
       
-      // 너무 짧은 녹음인 경우 처리 중단 (300ms 미만)
-      if (recordingDuration < 300) {
+      // 너무 짧은 녹음인 경우 처리 중단 (500ms 미만으로 조정)
+      if (recordingDuration < 500) {
         console.log('녹음이 너무 짧습니다. 처리 중단');
-        
-        try {
-          // 녹음 중지는 시도하되 결과는 무시
-          await recordingRef.current.stopAndUnloadAsync();
-        } catch (stopError) {
-          console.error('짧은 녹음 중지 중 오류:', stopError);
-        }
-        
-        recordingRef.current = null;
         setIsRecording(false);
+        await cleanupRecording();
         return;
       }
       
-      // 녹음 중지 및 STT 처리 시작
+      // 상태 업데이트
       setIsRecording(false);
       setIsProcessingSpeech(true);
       
-      // 녹음된 오디오 URI 가져오기
-      const audioUri = await stopRecording(recordingRef.current);
+      // 녹음 중지
+      const recording = recordingRef.current;
       recordingRef.current = null;
+      
+      const audioUri = await stopRecording(recording);
+      
+      console.log('녹음 중지 완료, STT 처리 시작');
       
       // STT 처리
       const transcribedText = await speechToText(audioUri);
@@ -177,12 +226,12 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
       
     } catch (error) {
       console.error('녹음 중지 처리 중 오류:', error);
-      resetStates();
+      await resetStates();
     }
-  };
+  }, [isRecording, cleanupRecording, resetStates]);
 
   // 음성 명령 처리 함수
-  const processVoiceCommand = async (transcribedText: string) => {
+  const processVoiceCommand = useCallback(async (transcribedText: string) => {
     try {
       if (!ocrResult || !ocrResult.fullText) {
         setIsProcessingSpeech(false);
@@ -243,7 +292,7 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
       setIsProcessingSpeech(false);
       setIsProcessingAI(false);
     }
-  };
+  }, [ocrResult, analysisResult]);
   
   // 텍스트 입력 변경 핸들러
   const handleTextChange = (text: string) => {
@@ -298,9 +347,6 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
     return () => {
       keyboardWillShow.remove();
       keyboardWillHide.remove();
-      
-      // 모달이 닫힐 때 오디오 정리
-      stopCurrentAudio();
     };
   }, []);
 
@@ -315,28 +361,18 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
   // 모달 닫힐 때 상태 초기화
   useEffect(() => {
     if (!visible) {
+      console.log('모달 닫힘 - 상태 초기화');
       resetStates();
-      stopCurrentAudio();
-      
-      // 녹음 객체가 있으면 중지
-      if (recordingRef.current) {
-        recordingRef.current.stopAndUnloadAsync().catch(error => {
-          console.error('녹음 객체 정리 중 오류:', error);
-        }).finally(() => {
-          recordingRef.current = null;
-        });
-      }
     }
-  }, [visible]);
+  }, [visible, resetStates]);
 
-  // 디버깅용 로그
+  // 컴포넌트 언마운트 시 정리
   useEffect(() => {
-    console.log('녹음 상태 변경:', isRecording);
-  }, [isRecording]);
-
-  useEffect(() => {
-    console.log('오디오 재생 상태 변경:', isPlayingAudio);
-  }, [isPlayingAudio]);
+    return () => {
+      console.log('컴포넌트 언마운트 - 리소스 정리');
+      resetStates();
+    };
+  }, [resetStates]);
 
   if (!mediaAsset) {
     return null;
@@ -404,6 +440,7 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
                 onPressOut={isRecording ? handleStopRecording : undefined}
                 onPress={isPlayingAudio ? stopCurrentAudio : undefined}
                 disabled={(!isRecording && !isPlayingAudio && isRecordButtonDisabled) || isProcessingSpeech || isProcessingAI}
+                activeOpacity={0.8}
               >
                 {isLoadingOcr ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
