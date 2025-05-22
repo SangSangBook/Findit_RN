@@ -65,6 +65,47 @@ export const getThemedStyles = (isDarkMode: boolean) => {
         paddingHorizontal: 12,
         marginBottom: 0,
       },
+      circleButton: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        backgroundColor: '#46B876', // 녹색으로 변경 (음성 입력을 위한 색상)
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 8,
+      },
+      // 녹음 중일 때 버튼 스타일
+      circleButtonRecording: {
+        backgroundColor: '#FF4444', // 녹음 중일 때 빨간색으로 변경
+      },
+      // 오디오 재생 중 버튼 스타일 - 가로 모양으로 변경
+      circleButtonPlaying: {
+        backgroundColor: '#46B876', // 녹색으로 변경
+        borderRadius: 17,
+        width: 70, // 가로로 더 넓게 설정
+        height: 34,
+      },
+      // 버튼 비활성화 스타일 - 추가된 스타일
+      circleButtonDisabled: {
+        backgroundColor: '#BBBBBB', // 회색으로 변경
+        opacity: 0.7, // 약간 투명하게
+      },
+      // 오디오 재생 버튼 스타일
+      audioPlayButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        backgroundColor: '#4299E2',
+        marginTop: 8,
+      },
+      audioPlayButtonText: {
+        color: '#fff',
+        fontSize: 14,
+        marginLeft: 4,
+      },
       textInput: {
         flex: 1,
         fontSize: 14,
