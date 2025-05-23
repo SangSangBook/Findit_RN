@@ -76,9 +76,6 @@ const TaskSuggestionList: React.FC<TaskSuggestionListProps> = ({
               </Text>
             </View>
           </View>
-          {suggestion.explanation && (
-            <Text style={styles.explanation}>{suggestion.explanation}</Text>
-          )}
         </TouchableOpacity>
       ))}
     </View>
@@ -142,11 +139,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '500',
-  },
-  explanation: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 5,
   },
 });
 
