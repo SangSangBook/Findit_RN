@@ -22,7 +22,6 @@ import {
 } from 'react-native';
 import Markdown from 'react-native-markdown-display';
 import type { OcrResult } from '../api/googleVisionApi';
-import { ocrWithGoogleVision } from '../api/googleVisionApi';
 import { getInfoFromTextWithOpenAI, suggestTasksFromOcr, TaskSuggestion } from '../api/openaiApi';
 import {
   answerQuestionFromSpeech
@@ -397,6 +396,15 @@ const HomeScreen = () => {
   const recordingDuration = useRef<number>(0);
   const recordingStartTime = useRef<number>(0);
 
+  // OCR 결과 캐싱을 위한 상태 추가
+  const [ocrCache, setOcrCache] = useState<{[uri: string]: OcrResult}>({});
+
+  // 이미지 분석 결과 캐싱을 위한 상태 추가
+  const [analysisCache, setAnalysisCache] = useState<{[uri: string]: AnalysisResult}>({});
+
+  // Task 제안 로딩 상태를 관리하기 위한 상태 추가
+  const [taskSuggestionsLoading, setTaskSuggestionsLoading] = useState<{[uri: string]: boolean}>({});
+
   // 디버깅을 위한 useEffect 추가
   useEffect(() => {
     console.log('Task suggestions updated:', taskSuggestions);
@@ -407,25 +415,44 @@ const HomeScreen = () => {
   };
 
   const processImageWithOCR = async (imageUri: string) => {
+    // 캐시된 OCR 결과가 있으면 재사용
+    if (ocrCache[imageUri]) {
+      console.log('캐시된 OCR 결과 사용:', imageUri);
+      setOcrResults(prev => ({ ...prev, [imageUri]: ocrCache[imageUri] }));
+      const detectedType = detectImageType(ocrCache[imageUri].fullText);
+      setImageTypes(prev => ({ ...prev, [imageUri]: detectedType }));
+      return;
+    }
+
     setIsLoadingOcr(prev => ({ ...prev, [imageUri]: true }));
     try {
-      const ocrResult = await ocrWithGoogleVision(imageUri);
-      console.log('OCR Result:', {
-        imageUri,
-        ocrResult
-      });
-
-      if (ocrResult && ocrResult.textBoxes.length > 0) {
-        setOcrResults(prevResults => ({ ...prevResults, [imageUri]: ocrResult }));
+      const analysisResult = await analyzeImage(imageUri);
+      if (analysisResult && analysisResult.text) {
+        const ocrResult: OcrResult = {
+          fullText: analysisResult.text,
+          textBoxes: analysisResult.text.split('\n').map(text => ({
+            description: text,
+            boundingPoly: {
+              vertices: [
+                { x: 0, y: 0 },
+                { x: 0, y: 0 },
+                { x: 0, y: 0 },
+                { x: 0, y: 0 }
+              ]
+            }
+          }))
+        };
+        setOcrResults(prev => ({ ...prev, [imageUri]: ocrResult }));
+        setOcrCache(prev => ({ ...prev, [imageUri]: ocrResult }));
         const detectedType = detectImageType(ocrResult.fullText);
         setImageTypes(prev => ({ ...prev, [imageUri]: detectedType }));
       } else {
-        setOcrResults(prevResults => ({ ...prevResults, [imageUri]: null }));
+        setOcrResults(prev => ({ ...prev, [imageUri]: null }));
         setImageTypes(prev => ({ ...prev, [imageUri]: 'OTHER' }));
       }
     } catch (error) {
       console.error(`이미지 OCR 오류 (${imageUri}):`, error);
-      setOcrResults(prevResults => ({ ...prevResults, [imageUri]: null }));
+      setOcrResults(prev => ({ ...prev, [imageUri]: null }));
       setImageTypes(prev => ({ ...prev, [imageUri]: 'OTHER' }));
     } finally {
       setIsLoadingOcr(prev => ({ ...prev, [imageUri]: false }));
@@ -549,7 +576,7 @@ const HomeScreen = () => {
           if (asset.type === 'image' && asset.uri) {
             const manipulated = await ImageManipulator.manipulateAsync(
               asset.uri,
-              [], // no-op, just strip EXIF
+              [],
               { compress: 1, format: ImageManipulator.SaveFormat.JPEG }
             );
             return { ...asset, uri: manipulated.uri };
@@ -565,27 +592,36 @@ const HomeScreen = () => {
         });
         setAssetUriMap(newAssetUriMap);
 
-        // 각 미디어에 대해 OCR 처리 및 task 제안 생성
+        // 각 미디어에 대해 처리
         for (const asset of manipulatedAssets) {
           if (asset.uri) {
             if (asset.type === 'video') {
               await processVideoWithOCR(asset.uri);
             } else {
               await processImageWithOCR(asset.uri);
-              // 이미지 분석 결과 로깅
               const analysisResult = await analyzeImage(asset.uri);
               if (analysisResult) {
-                console.log('\n=== 이미지 분석 결과 ===');
-                console.log('파일:', asset.uri);
+                // Task 제안 UI를 즉시 표시하기 위해 빈 배열로 초기화
+                setImageTaskSuggestions(prev => ({
+                  ...prev,
+                  [asset.uri]: {
+                    suggestions: [],
+                    imageType: imageTypes[asset.uri] || 'OTHER'
+                  }
+                }));
                 
+                // Task 제안 로딩 상태 시작
+                setTaskSuggestionsLoading(prev => ({ ...prev, [asset.uri]: true }));
+
+                // 첫 번째 이미지인 경우 자동으로 선택
+                if (!selectedImageUri) {
+                  setSelectedImageUri(asset.uri);
+                }
+
+                // 비동기적으로 Task 제안 생성
                 if (analysisResult.text) {
-                  console.log('\n[텍스트 분석 결과]');
-                  console.log(analysisResult.text);
-                  
-                  // OCR 결과로 task 제안 생성
                   const suggestions = await suggestTasksFromOcr(analysisResult.text);
                   if (suggestions && suggestions.length > 0) {
-                    // 각 이미지별로 task 제안 저장
                     setImageTaskSuggestions(prev => ({
                       ...prev,
                       [asset.uri]: {
@@ -593,60 +629,11 @@ const HomeScreen = () => {
                         imageType: imageTypes[asset.uri] || 'OTHER'
                       }
                     }));
-                    
-                    // 첫 번째 이미지인 경우 자동으로 선택
-                    if (!selectedImageUri) {
-                      setSelectedImageUri(asset.uri);
-                    }
                   }
                 }
-
-                if (analysisResult.objects.length > 0) {
-                  console.log('\n[감지된 물체]');
-                  for (const obj of analysisResult.objects) {
-                    const vertices = obj.boundingBox;
-                    const minX = Math.min(...vertices.map(v => v.x));
-                    const minY = Math.min(...vertices.map(v => v.y));
-                    const maxX = Math.max(...vertices.map(v => v.x));
-                    const maxY = Math.max(...vertices.map(v => v.y));
-                    
-                    // 위치 정보를 이미지 크기에 대한 상대적 비율로 표시
-                    const position = {
-                      left: Math.round(minX * 100),
-                      top: Math.round(minY * 100),
-                      right: Math.round(maxX * 100),
-                      bottom: Math.round(maxY * 100)
-                    };
-                    
-                    // 영어 단어를 한글로 번역
-                    const koreanTranslations = await translateToKorean(obj.name);
-                    const koreanText = koreanTranslations.length > 0 ? ` (${koreanTranslations.join(', ')})` : '';
-                    
-                    console.log(`- ${obj.name}${koreanText} (신뢰도: ${(obj.confidence * 100).toFixed(1)}%)`);
-                    console.log(`  위치: 왼쪽 ${position.left}%, 위 ${position.top}%, 오른쪽 ${position.right}%, 아래 ${position.bottom}%`);
-                  }
-                }
-
-                if (analysisResult.labels.length > 0) {
-                  console.log('\n[이미지 라벨]');
-                  analysisResult.labels.forEach(label => {
-                    console.log(`- ${label.description} (신뢰도: ${(label.confidence * 100).toFixed(1)}%)`);
-                  });
-                }
-
-                if (analysisResult.faces.length > 0) {
-                  console.log('\n[얼굴 감지 결과]');
-                  analysisResult.faces.forEach((face, index) => {
-                    console.log(`얼굴 ${index + 1}:`);
-                    if (face.joyLikelihood !== 'UNLIKELY') console.log(`- 기쁨: ${face.joyLikelihood}`);
-                    if (face.sorrowLikelihood !== 'UNLIKELY') console.log(`- 슬픔: ${face.sorrowLikelihood}`);
-                    if (face.angerLikelihood !== 'UNLIKELY') console.log(`- 분노: ${face.angerLikelihood}`);
-                    if (face.surpriseLikelihood !== 'UNLIKELY') console.log(`- 놀람: ${face.surpriseLikelihood}`);
-                    if (face.headwearLikelihood !== 'UNLIKELY') console.log(`- 모자 착용: ${face.headwearLikelihood}`);
-                  });
-                }
-
-                console.log('\n=====================\n');
+                
+                // Task 제안 로딩 상태 종료
+                setTaskSuggestionsLoading(prev => ({ ...prev, [asset.uri]: false }));
               }
             }
           }
@@ -956,29 +943,33 @@ const HomeScreen = () => {
 
   const analyzeImage = async (imageUri: string): Promise<AnalysisResult | null> => {
     try {
-      // 1. 이미지 크기 최적화 (API 호출 전에 미리 리사이즈)
+      // 캐시된 분석 결과가 있으면 재사용
+      if (analysisCache[imageUri]) {
+        console.log('캐시된 분석 결과 사용:', imageUri);
+        return analysisCache[imageUri];
+      }
+
+      // 1. 이미지 크기 최적화
       const optimizedImage = await ImageManipulator.manipulateAsync(
         imageUri,
-        [
-          // 이미지가 너무 크면 리사이즈 (Google Vision API 권장: 최대 20MB, 권장 1024x1024)
-          { resize: { width: Math.min(1024, 2048) } }
-        ],
+        [{ resize: { width: Math.min(1024, 2048) } }],
         { 
-          compress: 0.8, // 압축률 조정 (0.8 = 80% 품질)
+          compress: 0.8,
           format: ImageManipulator.SaveFormat.JPEG 
         }
       );
-  
+
       // 2. 이미지를 base64로 변환
       const base64Image = await FileSystem.readAsStringAsync(optimizedImage.uri, {
         encoding: FileSystem.EncodingType.Base64,
       });
-  
-      // 3. base64 크기 체크 (Google Vision API 제한: 20MB)
-      const imageSizeInMB = (base64Image.length * 3) / 4 / (1024 * 1024); // base64 크기 계산
+
+      // 3. base64 크기 체크
+      const imageSizeInMB = (base64Image.length * 3) / 4 / (1024 * 1024);
       console.log(`이미지 크기: ${imageSizeInMB.toFixed(2)}MB`);
       
-      if (imageSizeInMB > 18) { // 18MB로 여유두기
+      let finalBase64 = base64Image;
+      if (imageSizeInMB > 18) {
         console.warn('이미지가 너무 큽니다. 추가 압축을 진행합니다.');
         const furtherCompressed = await ImageManipulator.manipulateAsync(
           optimizedImage.uri,
@@ -986,24 +977,45 @@ const HomeScreen = () => {
           { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG }
         );
         
-        const compressedBase64 = await FileSystem.readAsStringAsync(furtherCompressed.uri, {
+        finalBase64 = await FileSystem.readAsStringAsync(furtherCompressed.uri, {
           encoding: FileSystem.EncodingType.Base64,
         });
-        
-        return await callGoogleVisionAPI(compressedBase64);
       }
-  
-      return await callGoogleVisionAPI(base64Image);
-  
+
+      // 4. Google Vision API 호출
+      const analysisResult = await callGoogleVisionAPI(finalBase64);
+      
+      if (analysisResult) {
+        // 분석 결과를 캐시에 저장
+        setAnalysisCache(prev => ({ ...prev, [imageUri]: analysisResult }));
+        
+        // OCR 결과도 별도로 저장
+        if (analysisResult.text) {
+          const ocrResult: OcrResult = {
+            fullText: analysisResult.text,
+            textBoxes: analysisResult.text.split('\n').map(text => ({
+              description: text,
+              boundingPoly: {
+                vertices: [
+                  { x: 0, y: 0 },
+                  { x: 0, y: 0 },
+                  { x: 0, y: 0 },
+                  { x: 0, y: 0 }
+                ]
+              }
+            }))
+          };
+          setOcrCache(prev => ({ ...prev, [imageUri]: ocrResult }));
+          setOcrResults(prev => ({ ...prev, [imageUri]: ocrResult }));
+        }
+      }
+
+      return analysisResult;
     } catch (error) {
       console.log('이미지 분석 중 오류 발생:', error);
-      
-      // AbortError 특별 처리
       if (error instanceof Error && error.name === 'AbortError') {
         console.log('네트워크 타임아웃 발생. 재시도를 권장합니다.');
-        return null;
       }
-      
       return null;
     }
   };
@@ -1136,8 +1148,13 @@ const HomeScreen = () => {
     setPreviewMediaAsset(media);
     if (media.type === 'image') {
       try {
-        const result = await analyzeImage(media.uri);
-        setAnalysisResult(result);
+        // 캐시된 분석 결과가 있으면 재사용
+        if (analysisCache[media.uri]) {
+          setAnalysisResult(analysisCache[media.uri]);
+        } else {
+          const result = await analyzeImage(media.uri);
+          setAnalysisResult(result);
+        }
       } catch (error) {
         console.error('Error analyzing image:', error);
       }
@@ -1166,6 +1183,18 @@ const HomeScreen = () => {
       const newSuggestions = { ...prev };
       delete newSuggestions[uri];
       return newSuggestions;
+    });
+
+    // 캐시에서도 제거
+    setOcrCache(prev => {
+      const newCache = { ...prev };
+      delete newCache[uri];
+      return newCache;
+    });
+    setAnalysisCache(prev => {
+      const newCache = { ...prev };
+      delete newCache[uri];
+      return newCache;
     });
 
     // 삭제된 이미지가 현재 선택된 이미지였다면 다른 이미지 선택
@@ -1627,7 +1656,6 @@ const handlePlayResponse = async (responseText: string) => {
         {/* Task Suggestions Section */}
         {Object.keys(imageTaskSuggestions).length > 0 && (
           <View style={styles.taskSuggestionsContainer}>
-            {/* 이미지 선택을 위한 가로 스크롤 뷰 */}
             <ScrollView 
               horizontal 
               showsHorizontalScrollIndicator={false}
@@ -1653,12 +1681,12 @@ const handlePlayResponse = async (responseText: string) => {
               ))}
             </ScrollView>
 
-            {/* 선택된 이미지의 task 제안 목록 표시 */}
             {selectedImageUri && imageTaskSuggestions[selectedImageUri] && (
               <View style={styles.taskSuggestionsList}>
                 <TaskSuggestionList
                   suggestions={imageTaskSuggestions[selectedImageUri].suggestions}
                   onTaskSelect={handleTaskSelect}
+                  isLoading={taskSuggestionsLoading[selectedImageUri]}
                 />
               </View>
             )}
