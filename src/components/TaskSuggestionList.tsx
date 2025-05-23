@@ -1,15 +1,17 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { TaskSuggestion } from '../api/openaiApi';
 
 interface TaskSuggestionListProps {
   suggestions: TaskSuggestion[];
-  onTaskSelect: (task: TaskSuggestion) => void;
+  onTaskSelect: (task: TaskSuggestion) => Promise<void>;
+  isLoading?: boolean;
 }
 
 const TaskSuggestionList: React.FC<TaskSuggestionListProps> = ({ 
   suggestions, 
-  onTaskSelect 
+  onTaskSelect,
+  isLoading = false 
 }) => {
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -37,8 +39,21 @@ const TaskSuggestionList: React.FC<TaskSuggestionListProps> = ({
     }
   };
 
-  if (suggestions.length === 0) {
-    return null;
+  if (isLoading) {
+    return (
+      <View style={{ padding: 20, alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#46B876" />
+        <Text style={{ marginTop: 10, color: '#666' }}>Task 제안을 생성하는 중...</Text>
+      </View>
+    );
+  }
+
+  if (!suggestions || suggestions.length === 0) {
+    return (
+      <View style={{ padding: 20, alignItems: 'center' }}>
+        <Text style={{ color: '#666' }}>제안할 수 있는 Task가 없습니다.</Text>
+      </View>
+    );
   }
 
   return (
@@ -61,6 +76,9 @@ const TaskSuggestionList: React.FC<TaskSuggestionListProps> = ({
               </Text>
             </View>
           </View>
+          {suggestion.explanation && (
+            <Text style={styles.explanation}>{suggestion.explanation}</Text>
+          )}
         </TouchableOpacity>
       ))}
     </View>
@@ -124,6 +142,11 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '500',
+  },
+  explanation: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 5,
   },
 });
 

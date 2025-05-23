@@ -402,6 +402,9 @@ const HomeScreen = () => {
   // 이미지 분석 결과 캐싱을 위한 상태 추가
   const [analysisCache, setAnalysisCache] = useState<{[uri: string]: AnalysisResult}>({});
 
+  // Task 제안 로딩 상태를 관리하기 위한 상태 추가
+  const [taskSuggestionsLoading, setTaskSuggestionsLoading] = useState<{[uri: string]: boolean}>({});
+
   // 디버깅을 위한 useEffect 추가
   useEffect(() => {
     console.log('Task suggestions updated:', taskSuggestions);
@@ -573,7 +576,7 @@ const HomeScreen = () => {
           if (asset.type === 'image' && asset.uri) {
             const manipulated = await ImageManipulator.manipulateAsync(
               asset.uri,
-              [], // no-op, just strip EXIF
+              [],
               { compress: 1, format: ImageManipulator.SaveFormat.JPEG }
             );
             return { ...asset, uri: manipulated.uri };
@@ -589,27 +592,36 @@ const HomeScreen = () => {
         });
         setAssetUriMap(newAssetUriMap);
 
-        // 각 미디어에 대해 OCR 처리 및 task 제안 생성
+        // 각 미디어에 대해 처리
         for (const asset of manipulatedAssets) {
           if (asset.uri) {
             if (asset.type === 'video') {
               await processVideoWithOCR(asset.uri);
             } else {
               await processImageWithOCR(asset.uri);
-              // 이미지 분석 결과 로깅
               const analysisResult = await analyzeImage(asset.uri);
               if (analysisResult) {
-                console.log('\n=== 이미지 분석 결과 ===');
-                console.log('파일:', asset.uri);
+                // Task 제안 UI를 즉시 표시하기 위해 빈 배열로 초기화
+                setImageTaskSuggestions(prev => ({
+                  ...prev,
+                  [asset.uri]: {
+                    suggestions: [],
+                    imageType: imageTypes[asset.uri] || 'OTHER'
+                  }
+                }));
                 
+                // Task 제안 로딩 상태 시작
+                setTaskSuggestionsLoading(prev => ({ ...prev, [asset.uri]: true }));
+
+                // 첫 번째 이미지인 경우 자동으로 선택
+                if (!selectedImageUri) {
+                  setSelectedImageUri(asset.uri);
+                }
+
+                // 비동기적으로 Task 제안 생성
                 if (analysisResult.text) {
-                  console.log('\n[텍스트 분석 결과]');
-                  console.log(analysisResult.text);
-                  
-                  // OCR 결과로 task 제안 생성
                   const suggestions = await suggestTasksFromOcr(analysisResult.text);
                   if (suggestions && suggestions.length > 0) {
-                    // 각 이미지별로 task 제안 저장
                     setImageTaskSuggestions(prev => ({
                       ...prev,
                       [asset.uri]: {
@@ -617,60 +629,11 @@ const HomeScreen = () => {
                         imageType: imageTypes[asset.uri] || 'OTHER'
                       }
                     }));
-                    
-                    // 첫 번째 이미지인 경우 자동으로 선택
-                    if (!selectedImageUri) {
-                      setSelectedImageUri(asset.uri);
-                    }
                   }
                 }
-
-                if (analysisResult.objects.length > 0) {
-                  console.log('\n[감지된 물체]');
-                  for (const obj of analysisResult.objects) {
-                    const vertices = obj.boundingBox;
-                    const minX = Math.min(...vertices.map(v => v.x));
-                    const minY = Math.min(...vertices.map(v => v.y));
-                    const maxX = Math.max(...vertices.map(v => v.x));
-                    const maxY = Math.max(...vertices.map(v => v.y));
-                    
-                    // 위치 정보를 이미지 크기에 대한 상대적 비율로 표시
-                    const position = {
-                      left: Math.round(minX * 100),
-                      top: Math.round(minY * 100),
-                      right: Math.round(maxX * 100),
-                      bottom: Math.round(maxY * 100)
-                    };
-                    
-                    // 영어 단어를 한글로 번역
-                    const koreanTranslations = await translateToKorean(obj.name);
-                    const koreanText = koreanTranslations.length > 0 ? ` (${koreanTranslations.join(', ')})` : '';
-                    
-                    console.log(`- ${obj.name}${koreanText} (신뢰도: ${(obj.confidence * 100).toFixed(1)}%)`);
-                    console.log(`  위치: 왼쪽 ${position.left}%, 위 ${position.top}%, 오른쪽 ${position.right}%, 아래 ${position.bottom}%`);
-                  }
-                }
-
-                if (analysisResult.labels.length > 0) {
-                  console.log('\n[이미지 라벨]');
-                  analysisResult.labels.forEach(label => {
-                    console.log(`- ${label.description} (신뢰도: ${(label.confidence * 100).toFixed(1)}%)`);
-                  });
-                }
-
-                if (analysisResult.faces.length > 0) {
-                  console.log('\n[얼굴 감지 결과]');
-                  analysisResult.faces.forEach((face, index) => {
-                    console.log(`얼굴 ${index + 1}:`);
-                    if (face.joyLikelihood !== 'UNLIKELY') console.log(`- 기쁨: ${face.joyLikelihood}`);
-                    if (face.sorrowLikelihood !== 'UNLIKELY') console.log(`- 슬픔: ${face.sorrowLikelihood}`);
-                    if (face.angerLikelihood !== 'UNLIKELY') console.log(`- 분노: ${face.angerLikelihood}`);
-                    if (face.surpriseLikelihood !== 'UNLIKELY') console.log(`- 놀람: ${face.surpriseLikelihood}`);
-                    if (face.headwearLikelihood !== 'UNLIKELY') console.log(`- 모자 착용: ${face.headwearLikelihood}`);
-                  });
-                }
-
-                console.log('\n=====================\n');
+                
+                // Task 제안 로딩 상태 종료
+                setTaskSuggestionsLoading(prev => ({ ...prev, [asset.uri]: false }));
               }
             }
           }
@@ -1693,7 +1656,6 @@ const handlePlayResponse = async (responseText: string) => {
         {/* Task Suggestions Section */}
         {Object.keys(imageTaskSuggestions).length > 0 && (
           <View style={styles.taskSuggestionsContainer}>
-            {/* 이미지 선택을 위한 가로 스크롤 뷰 */}
             <ScrollView 
               horizontal 
               showsHorizontalScrollIndicator={false}
@@ -1719,12 +1681,12 @@ const handlePlayResponse = async (responseText: string) => {
               ))}
             </ScrollView>
 
-            {/* 선택된 이미지의 task 제안 목록 표시 */}
             {selectedImageUri && imageTaskSuggestions[selectedImageUri] && (
               <View style={styles.taskSuggestionsList}>
                 <TaskSuggestionList
                   suggestions={imageTaskSuggestions[selectedImageUri].suggestions}
                   onTaskSelect={handleTaskSelect}
+                  isLoading={taskSuggestionsLoading[selectedImageUri]}
                 />
               </View>
             )}
