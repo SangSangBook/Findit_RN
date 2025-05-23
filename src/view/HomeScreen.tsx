@@ -22,7 +22,6 @@ import {
 } from 'react-native';
 import Markdown from 'react-native-markdown-display';
 import type { OcrResult } from '../api/googleVisionApi';
-import { ocrWithGoogleVision } from '../api/googleVisionApi';
 import { getInfoFromTextWithOpenAI, suggestTasksFromOcr, TaskSuggestion } from '../api/openaiApi';
 import {
   answerQuestionFromSpeech
@@ -397,6 +396,12 @@ const HomeScreen = () => {
   const recordingDuration = useRef<number>(0);
   const recordingStartTime = useRef<number>(0);
 
+  // OCR 결과 캐싱을 위한 상태 추가
+  const [ocrCache, setOcrCache] = useState<{[uri: string]: OcrResult}>({});
+
+  // 이미지 분석 결과 캐싱을 위한 상태 추가
+  const [analysisCache, setAnalysisCache] = useState<{[uri: string]: AnalysisResult}>({});
+
   // 디버깅을 위한 useEffect 추가
   useEffect(() => {
     console.log('Task suggestions updated:', taskSuggestions);
@@ -407,25 +412,44 @@ const HomeScreen = () => {
   };
 
   const processImageWithOCR = async (imageUri: string) => {
+    // 캐시된 OCR 결과가 있으면 재사용
+    if (ocrCache[imageUri]) {
+      console.log('캐시된 OCR 결과 사용:', imageUri);
+      setOcrResults(prev => ({ ...prev, [imageUri]: ocrCache[imageUri] }));
+      const detectedType = detectImageType(ocrCache[imageUri].fullText);
+      setImageTypes(prev => ({ ...prev, [imageUri]: detectedType }));
+      return;
+    }
+
     setIsLoadingOcr(prev => ({ ...prev, [imageUri]: true }));
     try {
-      const ocrResult = await ocrWithGoogleVision(imageUri);
-      console.log('OCR Result:', {
-        imageUri,
-        ocrResult
-      });
-
-      if (ocrResult && ocrResult.textBoxes.length > 0) {
-        setOcrResults(prevResults => ({ ...prevResults, [imageUri]: ocrResult }));
+      const analysisResult = await analyzeImage(imageUri);
+      if (analysisResult && analysisResult.text) {
+        const ocrResult: OcrResult = {
+          fullText: analysisResult.text,
+          textBoxes: analysisResult.text.split('\n').map(text => ({
+            description: text,
+            boundingPoly: {
+              vertices: [
+                { x: 0, y: 0 },
+                { x: 0, y: 0 },
+                { x: 0, y: 0 },
+                { x: 0, y: 0 }
+              ]
+            }
+          }))
+        };
+        setOcrResults(prev => ({ ...prev, [imageUri]: ocrResult }));
+        setOcrCache(prev => ({ ...prev, [imageUri]: ocrResult }));
         const detectedType = detectImageType(ocrResult.fullText);
         setImageTypes(prev => ({ ...prev, [imageUri]: detectedType }));
       } else {
-        setOcrResults(prevResults => ({ ...prevResults, [imageUri]: null }));
+        setOcrResults(prev => ({ ...prev, [imageUri]: null }));
         setImageTypes(prev => ({ ...prev, [imageUri]: 'OTHER' }));
       }
     } catch (error) {
       console.error(`이미지 OCR 오류 (${imageUri}):`, error);
-      setOcrResults(prevResults => ({ ...prevResults, [imageUri]: null }));
+      setOcrResults(prev => ({ ...prev, [imageUri]: null }));
       setImageTypes(prev => ({ ...prev, [imageUri]: 'OTHER' }));
     } finally {
       setIsLoadingOcr(prev => ({ ...prev, [imageUri]: false }));
@@ -956,29 +980,33 @@ const HomeScreen = () => {
 
   const analyzeImage = async (imageUri: string): Promise<AnalysisResult | null> => {
     try {
-      // 1. 이미지 크기 최적화 (API 호출 전에 미리 리사이즈)
+      // 캐시된 분석 결과가 있으면 재사용
+      if (analysisCache[imageUri]) {
+        console.log('캐시된 분석 결과 사용:', imageUri);
+        return analysisCache[imageUri];
+      }
+
+      // 1. 이미지 크기 최적화
       const optimizedImage = await ImageManipulator.manipulateAsync(
         imageUri,
-        [
-          // 이미지가 너무 크면 리사이즈 (Google Vision API 권장: 최대 20MB, 권장 1024x1024)
-          { resize: { width: Math.min(1024, 2048) } }
-        ],
+        [{ resize: { width: Math.min(1024, 2048) } }],
         { 
-          compress: 0.8, // 압축률 조정 (0.8 = 80% 품질)
+          compress: 0.8,
           format: ImageManipulator.SaveFormat.JPEG 
         }
       );
-  
+
       // 2. 이미지를 base64로 변환
       const base64Image = await FileSystem.readAsStringAsync(optimizedImage.uri, {
         encoding: FileSystem.EncodingType.Base64,
       });
-  
-      // 3. base64 크기 체크 (Google Vision API 제한: 20MB)
-      const imageSizeInMB = (base64Image.length * 3) / 4 / (1024 * 1024); // base64 크기 계산
+
+      // 3. base64 크기 체크
+      const imageSizeInMB = (base64Image.length * 3) / 4 / (1024 * 1024);
       console.log(`이미지 크기: ${imageSizeInMB.toFixed(2)}MB`);
       
-      if (imageSizeInMB > 18) { // 18MB로 여유두기
+      let finalBase64 = base64Image;
+      if (imageSizeInMB > 18) {
         console.warn('이미지가 너무 큽니다. 추가 압축을 진행합니다.');
         const furtherCompressed = await ImageManipulator.manipulateAsync(
           optimizedImage.uri,
@@ -986,24 +1014,45 @@ const HomeScreen = () => {
           { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG }
         );
         
-        const compressedBase64 = await FileSystem.readAsStringAsync(furtherCompressed.uri, {
+        finalBase64 = await FileSystem.readAsStringAsync(furtherCompressed.uri, {
           encoding: FileSystem.EncodingType.Base64,
         });
-        
-        return await callGoogleVisionAPI(compressedBase64);
       }
-  
-      return await callGoogleVisionAPI(base64Image);
-  
+
+      // 4. Google Vision API 호출
+      const analysisResult = await callGoogleVisionAPI(finalBase64);
+      
+      if (analysisResult) {
+        // 분석 결과를 캐시에 저장
+        setAnalysisCache(prev => ({ ...prev, [imageUri]: analysisResult }));
+        
+        // OCR 결과도 별도로 저장
+        if (analysisResult.text) {
+          const ocrResult: OcrResult = {
+            fullText: analysisResult.text,
+            textBoxes: analysisResult.text.split('\n').map(text => ({
+              description: text,
+              boundingPoly: {
+                vertices: [
+                  { x: 0, y: 0 },
+                  { x: 0, y: 0 },
+                  { x: 0, y: 0 },
+                  { x: 0, y: 0 }
+                ]
+              }
+            }))
+          };
+          setOcrCache(prev => ({ ...prev, [imageUri]: ocrResult }));
+          setOcrResults(prev => ({ ...prev, [imageUri]: ocrResult }));
+        }
+      }
+
+      return analysisResult;
     } catch (error) {
       console.log('이미지 분석 중 오류 발생:', error);
-      
-      // AbortError 특별 처리
       if (error instanceof Error && error.name === 'AbortError') {
         console.log('네트워크 타임아웃 발생. 재시도를 권장합니다.');
-        return null;
       }
-      
       return null;
     }
   };
@@ -1136,8 +1185,13 @@ const HomeScreen = () => {
     setPreviewMediaAsset(media);
     if (media.type === 'image') {
       try {
-        const result = await analyzeImage(media.uri);
-        setAnalysisResult(result);
+        // 캐시된 분석 결과가 있으면 재사용
+        if (analysisCache[media.uri]) {
+          setAnalysisResult(analysisCache[media.uri]);
+        } else {
+          const result = await analyzeImage(media.uri);
+          setAnalysisResult(result);
+        }
       } catch (error) {
         console.error('Error analyzing image:', error);
       }
@@ -1166,6 +1220,18 @@ const HomeScreen = () => {
       const newSuggestions = { ...prev };
       delete newSuggestions[uri];
       return newSuggestions;
+    });
+
+    // 캐시에서도 제거
+    setOcrCache(prev => {
+      const newCache = { ...prev };
+      delete newCache[uri];
+      return newCache;
+    });
+    setAnalysisCache(prev => {
+      const newCache = { ...prev };
+      delete newCache[uri];
+      return newCache;
     });
 
     // 삭제된 이미지가 현재 선택된 이미지였다면 다른 이미지 선택
