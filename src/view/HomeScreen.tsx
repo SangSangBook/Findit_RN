@@ -601,6 +601,14 @@ const HomeScreen = () => {
               await processImageWithOCR(asset.uri);
               const analysisResult = await analyzeImage(asset.uri);
               if (analysisResult) {
+                console.log('\n=== 이미지 분석 결과 ===');
+                console.log('파일:', asset.uri);
+                
+                if (analysisResult.text) {
+                  console.log('\n[텍스트 분석 결과]');
+                  console.log('전체 텍스트:', analysisResult.text);
+                }
+
                 // Task 제안 UI를 즉시 표시하기 위해 빈 배열로 초기화
                 setImageTaskSuggestions(prev => ({
                   ...prev,
@@ -634,6 +642,41 @@ const HomeScreen = () => {
                 
                 // Task 제안 로딩 상태 종료
                 setTaskSuggestionsLoading(prev => ({ ...prev, [asset.uri]: false }));
+
+                if (analysisResult.objects && analysisResult.objects.length > 0) {
+                  console.log('\n[감지된 물체]');
+                  for (const obj of analysisResult.objects) {
+                    const vertices = obj.boundingBox;
+                    const minX = Math.min(...vertices.map(v => v.x));
+                    const minY = Math.min(...vertices.map(v => v.y));
+                    const maxX = Math.max(...vertices.map(v => v.x));
+                    const maxY = Math.max(...vertices.map(v => v.y));
+                    
+                    // 위치 정보를 이미지 크기에 대한 상대적 비율로 표시
+                    const position = {
+                      left: Math.round(minX * 100),
+                      top: Math.round(minY * 100),
+                      right: Math.round(maxX * 100),
+                      bottom: Math.round(maxY * 100)
+                    };
+                    
+                    // 영어 단어를 한글로 번역
+                    const koreanTranslations = await translateToKorean(obj.name);
+                    const koreanText = koreanTranslations.length > 0 ? ` (${koreanTranslations.join(', ')})` : '';
+                    
+                    console.log(`- ${obj.name}${koreanText} (신뢰도: ${(obj.confidence * 100).toFixed(1)}%)`);
+                    console.log(`  위치: 왼쪽 ${position.left}%, 위 ${position.top}%, 오른쪽 ${position.right}%, 아래 ${position.bottom}%`);
+                  }
+                }
+
+                if (analysisResult.labels && analysisResult.labels.length > 0) {
+                  console.log('\n[이미지 라벨]');
+                  analysisResult.labels.forEach(label => {
+                    console.log(`- ${label.description} (신뢰도: ${(label.confidence * 100).toFixed(1)}%)`);
+                  });
+                }
+
+                console.log('\n=====================\n');
               }
             }
           }
@@ -703,8 +746,8 @@ const HomeScreen = () => {
             
             if (analysisResult.text) {
               console.log('\n[텍스트 분석 결과]');
-              console.log(analysisResult.text);
-              
+              console.log('전체 텍스트:',analysisResult.text);
+
               // OCR 결과로 task 제안 생성
               const suggestions = await suggestTasksFromOcr(analysisResult.text);
               if (suggestions && suggestions.length > 0) {
@@ -712,7 +755,7 @@ const HomeScreen = () => {
               }
             }
 
-            if (analysisResult.objects.length > 0) {
+            if (analysisResult.objects && analysisResult.objects.length > 0) {
               console.log('\n[감지된 물체]');
               for (const obj of analysisResult.objects) {
                 const vertices = obj.boundingBox;
@@ -738,7 +781,7 @@ const HomeScreen = () => {
               }
             }
 
-            if (analysisResult.labels.length > 0) {
+            if (analysisResult.labels && analysisResult.labels.length > 0) {
               console.log('\n[이미지 라벨]');
               analysisResult.labels.forEach(label => {
                 console.log(`- ${label.description} (신뢰도: ${(label.confidence * 100).toFixed(1)}%)`);
@@ -967,7 +1010,7 @@ const HomeScreen = () => {
       // 3. base64 크기 체크
       const imageSizeInMB = (base64Image.length * 3) / 4 / (1024 * 1024);
       console.log(`이미지 크기: ${imageSizeInMB.toFixed(2)}MB`);
-      
+
       let finalBase64 = base64Image;
       if (imageSizeInMB > 18) {
         console.warn('이미지가 너무 큽니다. 추가 압축을 진행합니다.');
